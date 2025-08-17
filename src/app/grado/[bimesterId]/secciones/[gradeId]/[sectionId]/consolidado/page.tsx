@@ -1,126 +1,386 @@
 "use client";
-import React from "react";
+
+import React, { useEffect, useState, useMemo } from "react";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-
-// Modelos según el consolidado del backend
-type Competency = { id: number; display_name: string; transv?: boolean };
-type Criterion = { id: number; competency_id: number; display_name: string };
-type Student = { id: number; full_name: string };
-type Value = { student_id: number; criterion_id: number; value: string };
-
-type ConsolidadoResponse = {
-  students: Student[];
-  competencies: Competency[];
-  criteria: Criterion[];
-  values: Value[];
-};
+import { ExportButton } from "@/app/components/ExportButton";
+import type {
+  ConsolidadoResponse,
+  Session,
+  Competency,
+  Ability,
+  Criterion,
+  Student,
+  Observation,
+  Value
+} from "@/app/util/exportConsolidado";
 
 export default function ConsolidadoPage() {
   const params = useParams() as { sectionId: string };
   const { sectionId } = params;
-  const [data, setData] = useState<ConsolidadoResponse | null>(null);
 
+  // Estados base
+  const [data, setData] = useState<ConsolidadoResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [modalObs, setModalObs] = useState<{
+    student: Student;
+    ability: Ability;
+    text: string;
+  } | null>(null);
+
+  // Carga de datos
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/sections/${sectionId}/consolidado`)
-      .then(r => r.json())
-      .then(setData);
+    const controller = new AbortController();
+    setError(null);
+    setData(null);
+
+    const base = process.env.NEXT_PUBLIC_API_URL ?? "https://backend-web-mom-3dmj.shuttle.app";
+    fetch(`${base}/sections/${sectionId}/consolidado`, { signal: controller.signal })
+      .then(async (r) => {
+        if (!r.ok) {
+          throw new Error(`Error ${r.status} al cargar consolidado`);
+        }
+        return r.json();
+      })
+      .then((json: ConsolidadoResponse) => setData(json))
+      .catch((e) => {
+        if (e.name === "AbortError") return;
+        console.error(e);
+        setError(e.message);
+      });
+
+    return () => controller.abort();
   }, [sectionId]);
 
-  if (!data) return <div>Cargando consolidado...</div>;
+  // Datos seguros (para que los useMemo siempre tengan algo)
+  const sessions = data?.sessions ?? [];
+  const competencies = data?.competencies ?? [];
+  const abilities = data?.abilities ?? [];
+  const criterios = data?.criteria ?? [];
+  const students = data?.students ?? [];
+  const observations = data?.observations ?? [];
+  const values = data?.values ?? [];
 
-  // Agrupar criterios por competencia
-  const criteriosPorComp: Record<number, Criterion[]> = {};
-  data.criteria.forEach(cr => {
-    if (!criteriosPorComp[cr.competency_id]) criteriosPorComp[cr.competency_id] = [];
-    criteriosPorComp[cr.competency_id].push(cr);
-  });
+  // Agrupaciones memoizadas
+  const compsPorSesion = useMemo(() => {
+    const map: Record<number, Competency[]> = {};
+    competencies.forEach((c) => (map[c.session_id] ||= []).push(c));
+    return map;
+  }, [competencies]);
 
-  // Separar competencias regulares y transversales
-  const competenciasRegulares = data.competencies.filter(comp => !comp.transv);
-  const competenciasTransversales = data.competencies.filter(comp => comp.transv);
+  const abilitiesPorComp = useMemo(() => {
+    const map: Record<number, Ability[]> = {};
+    abilities.forEach((a) => (map[a.competency_id] ||= []).push(a));
+    return map;
+  }, [abilities]);
 
-  // Para obtener el valor de un criterio específico
+  const criteriosPorAbility = useMemo(() => {
+    const map: Record<number, Criterion[]> = {};
+    criterios.forEach((cr) => (map[cr.ability_id] ||= []).push(cr));
+    return map;
+  }, [criterios]);
+
+  const obsPorEstudHab = useMemo(() => {
+    const map: Record<string, string> = {};
+    observations.forEach((o: Observation) => {
+      map[`${o.student_id}-${o.ability_id}`] = o.observation;
+    });
+    return map;
+  }, [observations]);
+
+  const valorPorStudentCriterion = useMemo(() => {
+    const map: Record<string, string> = {};
+    values.forEach((v: Value) => {
+      map[`${v.student_id}-${v.criterion_id}`] = v.value;
+    });
+    return map;
+  }, [values]);
+
   function getValorCriterio(student_id: number, criterion_id: number) {
-    if (!data) return "";
-    const valObj = data.values.find(
-      v => v.student_id === student_id && v.criterion_id === criterion_id
-    );
-    return valObj ? valObj.value : "";
+    return valorPorStudentCriterion[`${student_id}-${criterion_id}`] ?? "";
   }
 
+  function getColspanSesion(ses: Session) {
+    return (compsPorSesion[ses.id] || []).reduce((acc, comp) => {
+      return (
+        acc +
+        (abilitiesPorComp[comp.id] || []).reduce((sum, ab) => {
+          return sum + (criteriosPorAbility[ab.id]?.length || 0) + 1; // +1 observación
+        }, 0) +
+        1 // +1 promedio competencia
+      );
+    }, 0);
+  }
+
+  function getAbilityById(ability_id: number) {
+    return abilities.find((a) => a.id === ability_id);
+  }
+
+  function getStudentById(student_id: number) {
+    return students.find((s) => s.id === student_id);
+  }
+
+  const isLoading = !error && data === null;
+  const hasData = !isLoading && !error && data !== null;
+
   return (
-    <main className="min-h-screen bg-white py-12 px-2 overflow-auto">
-      <h1 className="text-2xl font-bold mb-6">Consolidado</h1>
-      <table className="border-collapse w-full text-xs">
-        <thead>
-          {/* Fila 1: Encabezados principales */}
-          <tr>
-            <th className="border font-bold bg-gray-200 text-center" rowSpan={3} style={{ minWidth: 32 }}>N°</th>
-            <th className="border font-bold bg-gray-200 text-center" rowSpan={3} style={{ minWidth: 200 }}>APELLIDOS Y NOMBRES</th>
-            <th 
-              className="border font-bold bg-gray-100 text-center" 
-              colSpan={competenciasRegulares.reduce((total, comp) => 
-                total + (criteriosPorComp[comp.id]?.length || 0) + 1, 0
-              )}
-            >
-              COMPETENCIAS DE AREA
-            </th>
-          </tr>
+    <main className="min-h-screen bg-white py-8 px-3 overflow-auto">
+      <div className="flex items-center justify-between mb-6 gap-4 flex-wrap">
+        <h1 className="text-2xl font-bold">
+          Consolidado por Sesión
+        </h1>
+        {hasData && data && (
+          <ExportButton
+            data={data}
+            fileName={`consolidado_seccion_${sectionId}.xlsx`}
+            calcularPromedios={false}
+            comentarios={true}
+          />
+        )}
+      </div>
 
-          {/* Fila 2: Nombres de competencias regulares */}
-          <tr>
-            {competenciasRegulares.map(comp =>
-              <th
-                key={comp.id}
-                className="border font-bold bg-gray-100 text-center"
-                colSpan={(criteriosPorComp[comp.id]?.length || 0) + 1}
-              >
-                {comp.display_name}
-              </th>
-            )}
-          </tr>
+      {error && (
+        <div className="p-4 border rounded bg-red-50 text-red-700 mb-4">
+          <p className="font-semibold mb-2">
+            No se pudo cargar el consolidado: {error}
+          </p>
+          <button
+            onClick={() => location.reload()}
+            className="px-3 py-2 rounded bg-blue-600 text-white text-sm hover:bg-blue-700"
+          >
+            Reintentar
+          </button>
+        </div>
+      )}
 
-          {/* Fila 3: Criterios y PROMED para competencias regulares, TIC y AUTON para transversales */}
-          <tr>
-            {competenciasRegulares.map(comp => (
-              <React.Fragment key={comp.id}>
-                {(criteriosPorComp[comp.id] || []).map(cr => (
-                  <th key={cr.id} className="border font-bold bg-gray-200 text-center" style={{ minWidth: 36 }}>
-                    {cr.display_name}
+      {isLoading && (
+        <div className="p-4 text-sm text-gray-600 animate-pulse">
+          Cargando consolidado...
+        </div>
+      )}
+
+      {hasData && (
+        <div className="overflow-auto border rounded">
+          <table className="border-collapse w-full text-xs">
+            <thead>
+              {/* Fila 1: Sesiones */}
+              <tr>
+                <th
+                  className="border font-bold bg-gray-200 text-center"
+                  rowSpan={4}
+                  style={{ minWidth: 36 }}
+                >
+                  N°
+                </th>
+                <th
+                  className="border font-bold bg-gray-200 text-center"
+                  rowSpan={4}
+                  style={{ minWidth: 240 }}
+                >
+                  APELLIDOS Y NOMBRES
+                </th>
+                {sessions.map((ses) => (
+                  <th
+                    key={ses.id}
+                    className="border font-bold bg-gray-100 text-center"
+                    colSpan={getColspanSesion(ses)}
+                  >
+                    {ses.title || `Sesión ${ses.number}`}
                   </th>
                 ))}
-                <th className="border font-bold bg-gray-200 text-center" style={{ minWidth: 36, writingMode: "vertical-rl" }}>
-                  PROMED
-                </th>
-              </React.Fragment>
-            ))}
-          </tr>
-        </thead>
-        
-        <tbody>
-          {data.students.map((st, idx) => (
-            <tr key={st.id}>
-              <td className="border text-center">{idx + 1}</td>
-              <td className="border">{st.full_name}</td>
-              
-              {/* Competencias regulares: criterios y PROMED */}
-              {competenciasRegulares.map(comp => (
-                <React.Fragment key={comp.id}>
-                  {(criteriosPorComp[comp.id] || []).map(cr => (
-                    <td key={cr.id} className="border text-center" style={{ height: 32 }}>
-                      {getValorCriterio(st.id, cr.id)}
-                    </td>
-                  ))}
-                  <td className="border text-center" style={{ height: 32 }}>
-                    {/* Celda vacía para PROMED (docente llenará) */}
-                  </td>
-                </React.Fragment>
+              </tr>
+
+              {/* Fila 2: Competencias */}
+              <tr>
+                {sessions.map((ses) =>
+                  (compsPorSesion[ses.id] || []).map((comp) => (
+                    <th
+                      key={comp.id}
+                      className="border font-bold bg-gray-100 text-center"
+                      colSpan={
+                        (abilitiesPorComp[comp.id] || []).reduce(
+                          (sum, ab) =>
+                            sum + (criteriosPorAbility[ab.id]?.length || 0) + 1, // obs
+                          0
+                        ) + 1 // promedio
+                      }
+                    >
+                      {comp.display_name}
+                    </th>
+                  ))
+                )}
+              </tr>
+
+              {/* Fila 3: Habilidades */}
+              <tr>
+                {sessions.map((ses) =>
+                  (compsPorSesion[ses.id] || []).flatMap((comp) => {
+                    const abilityCells = (abilitiesPorComp[comp.id] || []).map(
+                      (ab) => (
+                        <th
+                          key={ab.id}
+                          className="border font-bold bg-gray-200 text-center"
+                          colSpan={(criteriosPorAbility[ab.id]?.length || 0) + 1}
+                        >
+                          {ab.display_name}
+                        </th>
+                      )
+                    );
+                    abilityCells.push(
+                      <th
+                        key={`promed-col-${comp.id}`}
+                        className="border font-bold bg-gray-200 text-center"
+                        rowSpan={1}
+                        style={{
+                          minWidth: 40,
+                          writingMode: "vertical-rl",
+                          rotate: "180deg",
+                        }}
+                      >
+                        PROMED
+                      </th>
+                    );
+                    return abilityCells;
+                  })
+                )}
+              </tr>
+
+              {/* Fila 4: Criterios + Observación + Resultado */}
+              <tr>
+                {sessions.map((ses) =>
+                  (compsPorSesion[ses.id] || []).flatMap((comp) => {
+                    const cells = (abilitiesPorComp[comp.id] || []).flatMap(
+                      (ab) => {
+                        const crits = criteriosPorAbility[ab.id] || [];
+                        return [
+                          ...crits.map((cr) => (
+                            <th
+                              key={cr.id}
+                              className="border font-bold bg-gray-100 text-center"
+                              style={{ minWidth: 36 }}
+                              title={cr.display_name}
+                            >
+                              {cr.display_name}
+                            </th>
+                          )),
+                          <th
+                            key={`obs-head-${ab.id}`}
+                            className="border font-bold bg-yellow-50 text-center"
+                            style={{ minWidth: 30 }}
+                            title="Observación"
+                          >
+                            📝
+                          </th>,
+                        ];
+                      }
+                    );
+                    cells.push(
+                      <th
+                        key={`resultado-head-${comp.id}`}
+                        className="border font-bold bg-gray-100 text-center"
+                        style={{ minWidth: 52 }}
+                        title="Promedio de la competencia"
+                      >
+                        Resultado
+                      </th>
+                    );
+                    return cells;
+                  })
+                )}
+              </tr>
+            </thead>
+
+            <tbody>
+              {students.map((st, idx) => (
+                <tr key={st.id} className="odd:bg-white even:bg-gray-50">
+                  <td className="border text-center font-medium">{idx + 1}</td>
+                  <td className="border">{st.full_name}</td>
+
+                  {sessions.map((ses) =>
+                    (compsPorSesion[ses.id] || []).flatMap((comp) =>
+                      (abilitiesPorComp[comp.id] || []).flatMap((ab) => {
+                        const crits = criteriosPorAbility[ab.id] || [];
+                        return [
+                          ...crits.map((cr) => (
+                            <td
+                              key={`${st.id}-${cr.id}`}
+                              className="border text-center"
+                              style={{ height: 30 }}
+                            >
+                              {getValorCriterio(st.id, cr.id)}
+                            </td>
+                          )),
+                          <td
+                            key={`obs-${st.id}-${ab.id}`}
+                            className="border text-center"
+                            style={{
+                              height: 30,
+                              background: obsPorEstudHab[`${st.id}-${ab.id}`]
+                                ? "#FFF9C4"
+                                : undefined,
+                            }}
+                          >
+                            {obsPorEstudHab[`${st.id}-${ab.id}`] && (
+                              <button
+                                title="Ver observación"
+                                onClick={() =>
+                                  setModalObs({
+                                    student: getStudentById(st.id)!,
+                                    ability: getAbilityById(ab.id)!,
+                                    text: obsPorEstudHab[`${st.id}-${ab.id}`],
+                                  })
+                                }
+                                className="text-yellow-600 hover:text-yellow-900"
+                                style={{
+                                  background: "none",
+                                  border: "none",
+                                  cursor: "pointer",
+                                  fontSize: "1.05em",
+                                }}
+                              >
+                                📝
+                              </button>
+                            )}
+                          </td>,
+                        ];
+                      }).concat([
+                        <td
+                          key={`promed-${st.id}-${comp.id}`}
+                          className="border text-center text-[11px]"
+                          style={{ height: 30 }}
+                        ></td>,
+                      ])
+                    )
+                  )}
+                </tr>
               ))}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {/* Modal Observaciones */}
+      {modalObs && (
+        <div className="fixed z-50 inset-0 bg-black/40 flex items-center justify-center p-4">
+          <div className="bg-white rounded shadow-lg max-w-md w-full p-6 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-500 hover:text-black"
+              onClick={() => setModalObs(null)}
+              title="Cerrar"
+            >
+              ✖
+            </button>
+            <h2 className="text-lg font-bold mb-2">
+              Observación de {modalObs.student.full_name}
+            </h2>
+            <p className="text-sm text-gray-700 mb-2">
+              <b>Habilidad:</b> {modalObs.ability.display_name}
+            </p>
+            <div className="border p-3 rounded bg-gray-50 text-gray-800 whitespace-pre-line text-sm max-h-64 overflow-auto">
+              {modalObs.text}
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

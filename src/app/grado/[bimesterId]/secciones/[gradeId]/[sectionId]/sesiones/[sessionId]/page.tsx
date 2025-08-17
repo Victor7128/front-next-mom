@@ -54,7 +54,7 @@ export default function DetalleSesionPage() {
   // Cargar datos
   useEffect(() => {
     if (sectionId)
-      fetch(`http://127.0.0.1:8000/sections/${sectionId}`)
+      fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}`)
         .then(r => r.json())
         .then(setSection)
         .catch(() => setSection(null));
@@ -62,7 +62,7 @@ export default function DetalleSesionPage() {
 
   useEffect(() => {
     if (gradeId)
-      fetch(`http://127.0.0.1:8000/grades/${gradeId}`)
+      fetch(`https://backend-web-mom-3dmj.shuttle.app/grades/${gradeId}`)
         .then(r => r.json())
         .then(setGrade)
         .catch(() => setGrade(null));
@@ -70,7 +70,7 @@ export default function DetalleSesionPage() {
 
   useEffect(() => {
     if (grade && grade.bimester_id)
-      fetch(`http://127.0.0.1:8000/bimesters/${grade.bimester_id}`)
+      fetch(`https://backend-web-mom-3dmj.shuttle.app/bimesters/${grade.bimester_id}`)
         .then(r => r.json())
         .then(setBimester)
         .catch(() => setBimester(null));
@@ -78,7 +78,7 @@ export default function DetalleSesionPage() {
 
   useEffect(() => {
     if (sessionId)
-      fetch(`http://127.0.0.1:8000/sessions/${sessionId}`)
+      fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}`)
         .then(r => r.json())
         .then(setSession)
         .catch(() => setSession(null));
@@ -87,7 +87,7 @@ export default function DetalleSesionPage() {
   // Cargar productos de la sesión
   useEffect(() => {
     if (sessionId)
-      fetch(`http://127.0.0.1:8000/sessions/${sessionId}/products`)
+      fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}/products`)
         .then(r => r.json())
         .then(setProducts)
         .catch(() => setProducts([]));
@@ -120,36 +120,6 @@ export default function DetalleSesionPage() {
               Bimestre: <b>{bimester.name}</b>
             </span>
           )}
-        </div>
-      </div>
-
-      {/* Tarjeta de producto */}
-      <div className="mb-10">
-        <h2 className="text-lg font-bold text-gray-700 mb-2">Producto(s) a evaluar</h2>
-        {products.length === 0 ? (
-          <div className="text-gray-500 italic">No hay productos registrados para esta sesión.</div>
-        ) : (
-          <ul className="flex flex-col gap-3">
-            {products.map(product => (
-              <li key={product.id} className="bg-gray-50 border border-gray-200 rounded-xl p-4 shadow-sm">
-                <div className="flex items-center gap-2">
-                  <span className="text-2xl">📝</span>
-                  <span className="font-semibold text-gray-800 text-lg">{product.name || `Producto ${product.number}`}</span>
-                </div>
-                {product.description && (
-                  <div className="text-gray-600 mt-2">{product.description}</div>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-4">
-          <Link
-            href={`/grado/${bimesterId}/secciones/${gradeId}/${sectionId}/sesiones/${sessionId}/productos`}
-            className="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700 transition text-sm font-bold no-underline"
-          >
-            Gestionar productos
-          </Link>
         </div>
       </div>
 

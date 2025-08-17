@@ -1,81 +1,143 @@
 "use client";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ModalAutoClose } from "@/app/components/ModalAutoclose";
 
-// Tipos de los modelos
-type Competency = { id: number; number: number; name?: string | null };
-type Criterion = { id: number; number: number; name?: string | null };
+// Tipos para los datos
+type Competency = { id: number; display_name: string };
+type Product = { id: number; name: string; description: string | null };
+type Ability = { id: number; display_name: string };
+type Criterion = { id: number; ability_id: number; display_name: string };
 type Student = { id: number; full_name: string };
 type EvalValue = "AD" | "A" | "B" | "C";
-
-type MatrixResponse = {
-  locked: boolean;
-  competency: { id: number; display_name: string };
-  criteria: { id: number; display_name: string }[];
-  students: { id: number; full_name: string }[];
-  values: { student_id: number; criterion_id: number; value: string }[];
+type ValueItem = {
+  student_id: number;
+  ability_id: number;
+  criterion_id: number;
+  value: string;
+  observation: string | null;
 };
-
+type EvaluationContextResponse = {
+  locked: boolean;
+  session: { id: number; name: string };
+  competency: { id: number; display_name: string };
+  product: Product;
+  abilities: Ability[];
+  criteria: Criterion[];
+  students: Student[];
+  values: ValueItem[];
+};
 type LocalValue = {
   [studentId: number]: {
     [criterionId: number]: EvalValue | "";
   };
 };
+type LocalObs = {
+  [studentId: number]: string;
+};
 
 export default function EvaluacionPage() {
-  const params = useParams() as { sessionId: string; sectionId: string };
-  const { sessionId } = params;
-  const [competencias, setCompetencias] = useState<Competency[]>([]);
-  const [selectedCompId, setSelectedCompId] = useState<number | null>(null);
-  const [matrix, setMatrix] = useState<MatrixResponse | null>(null);
+  const params = useParams() as { sessionId?: string };
+  const sessionId = params.sessionId;
+
+  const [competencies, setCompetencies] = useState<Competency[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [selectedCompetencyId, setSelectedCompetencyId] = useState<number | null>(null);
+  const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
+
+  const [context, setContext] = useState<EvaluationContextResponse | null>(null);
+  const [abilities, setAbilities] = useState<Ability[]>([]);
+  const [selectedAbilityId, setSelectedAbilityId] = useState<number | null>(null);
   const [localValues, setLocalValues] = useState<LocalValue>({});
+  const [localObs, setLocalObs] = useState<LocalObs>({});
   const [saving, setSaving] = useState(false);
   const [modalMsg, setModalMsg] = useState<string | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
-  // Fetch competencias
+  // Modal de observación
+  const [obsModalOpen, setObsModalOpen] = useState(false);
+  const [obsStudentId, setObsStudentId] = useState<number | null>(null);
+  const [obsInput, setObsInput] = useState("");
+
+  // --- NUEVO: Estado para bloquear/desbloquear
+  const [lockLoading, setLockLoading] = useState(false);
+
+  // Al cargar, obtener competencias y productos disponibles para la sesión
   useEffect(() => {
-    fetch(`http://127.0.0.1:8000/sessions/${sessionId}/competencies`)
+    setFetchError(null);
+    if (!sessionId) {
+      setFetchError("Falta sessionId en la URL.");
+      return;
+    }
+    fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}/competencies`)
       .then(r => r.json())
-      .then(setCompetencias);
+      .then((data: any[]) => setCompetencies(data.map(c => ({
+        id: c.id,
+        display_name: c.name ?? `Competencia ${c.number}`
+      }))))
+      .catch(() => setFetchError("Error al cargar competencias."));
+    fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}/products`)
+      .then(r => r.json())
+      .then((data: any[]) => setProducts(data.map(p => ({
+        id: p.id,
+        name: p.name ?? `Producto ${p.number}`,
+        description: p.description
+      }))))
+      .catch(() => setFetchError("Error al cargar productos."));
   }, [sessionId]);
 
-  // Fetch matrix and initialize localValues
   useEffect(() => {
-    if (!selectedCompId) return;
-    fetch(`http://127.0.0.1:8000/sessions/${sessionId}/competencies/${selectedCompId}/matrix`)
-      .then(r => r.json())
-      .then((data: MatrixResponse) => {
-        setMatrix(data);
-        // Inicializa localValues según lo que trae la matriz actual
-        const newLocal: LocalValue = {};
-        data.students.forEach(st => {
-          newLocal[st.id] = {};
-          data.criteria.forEach(cr => {
-            const valObj = data.values.find(
-              v => v.student_id === st.id && v.criterion_id === cr.id
-            );
-            newLocal[st.id][cr.id] = valObj ? (valObj.value as EvalValue) : "";
-          });
-        });
-        setLocalValues(newLocal);
-      });
-  }, [selectedCompId, sessionId]);
-
-  // Cierre automático del modal al segundo o 2
-  useEffect(() => {
-    if (modalMsg) {
-      const timer = setTimeout(() => setModalMsg(null), 2000);
-      return () => clearTimeout(timer);
+    setContext(null);
+    setAbilities([]);
+    setSelectedAbilityId(null);
+    if (!sessionId || !selectedCompetencyId || !selectedProductId) {
+      return;
     }
-  }, [modalMsg]);
+    fetch(`https://backend-web-mom-3dmj.shuttle.app/evaluation/context?session_id=${sessionId}&product_id=${selectedProductId}&competency_id=${selectedCompetencyId}`)
+      .then(async r => {
+        if (!r.ok) throw new Error(await r.text());
+        return r.json();
+      })
+      .then((data: EvaluationContextResponse) => {
+        setContext(data);
+        setAbilities(data.abilities || []);
+        if (data.abilities && data.abilities.length > 0) {
+          setSelectedAbilityId(data.abilities[0].id);
+        }
+      })
+      .catch(e => setFetchError(typeof e === "string" ? e : e.message));
+  }, [sessionId, selectedCompetencyId, selectedProductId]);
 
-  // Actualiza localValues cuando se cambia un radio
+  useEffect(() => {
+    if (!selectedAbilityId || !context) return;
+    const criteria = context.criteria.filter((c) => c.ability_id === selectedAbilityId);
+    const values = context.values.filter((v) => v.ability_id === selectedAbilityId);
+
+    const lv: LocalValue = {};
+    const lo: LocalObs = {};
+
+    context.students.forEach((st) => {
+      lv[st.id] = {};
+      criteria.forEach((cr) => {
+        const valObj = values.find(
+          (v) => v.student_id === st.id && v.criterion_id === cr.id
+        );
+        lv[st.id][cr.id] = valObj ? (valObj.value as EvalValue) : "";
+        const obsVal = values.find((v) => v.student_id === st.id && v.ability_id === selectedAbilityId);
+        lo[st.id] = obsVal && obsVal.observation ? obsVal.observation : "";
+      });
+    });
+
+    setLocalValues(lv);
+    setLocalObs(lo);
+  }, [selectedAbilityId, context]);
+
   const handleLocalChange = (
     student_id: number,
     criterion_id: number,
     value: EvalValue
   ) => {
-    setLocalValues(prev => ({
+    setLocalValues((prev) => ({
       ...prev,
       [student_id]: {
         ...prev[student_id],
@@ -84,226 +146,287 @@ export default function EvaluacionPage() {
     }));
   };
 
-  // Guardar evaluación (envía todos los cambios al backend)
   const handleSave = async () => {
-    if (!matrix || !selectedCompId || matrix.locked) return;
+    if (!context || !selectedAbilityId || context.locked) return;
     setSaving(true);
     setModalMsg(null);
 
-    try {
-      const promises: Promise<any>[] = [];
-      matrix.students.forEach(st => {
-        matrix.criteria.forEach(cr => {
-          const value = localValues[st.id]?.[cr.id] ?? "";
-          if (value) {
-            promises.push(
-              fetch(`http://127.0.0.1:8000/evaluation/value`, {
-                method: "PUT",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  session_id: Number(sessionId),
-                  competency_id: selectedCompId,
-                  criterion_id: cr.id,
-                  student_id: st.id,
-                  value,
-                }),
-              })
-            );
-          }
-        });
+    const criteria = context.criteria.filter((c) => c.ability_id === selectedAbilityId);
+    const product = context.product;
+    const promises: Promise<any>[] = [];
+
+    context.students.forEach((st) => {
+      criteria.forEach((cr) => {
+        const value = localValues[st.id]?.[cr.id] ?? "";
+        promises.push(
+          fetch(`https://backend-web-mom-3dmj.shuttle.app/evaluation/value`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              session_id: Number(sessionId),
+              competency_id: context.competency.id,
+              ability_id: selectedAbilityId,
+              criterion_id: cr.id,
+              product_id: product.id,
+              student_id: st.id,
+              value,
+              observation: localObs[st.id] || null,
+            }),
+          })
+        );
       });
+    });
 
-      const results = await Promise.allSettled(promises);
+    const results = await Promise.allSettled(promises);
 
-      const hasError = results.some(
-        (res) =>
-          res.status === "rejected" ||
-          (res.status === "fulfilled" &&
-            "ok" in res.value &&
-            !res.value.ok)
-      );
+    const hasError = results.some(
+      (res) =>
+        res.status === "rejected" ||
+        (res.status === "fulfilled" && "ok" in res.value && !res.value.ok)
+    );
 
-      setSaving(false);
+    setSaving(false);
 
-      if (hasError) {
-        setModalMsg("Error al guardar los cambios.");
-      } else {
-        setModalMsg("Los cambios se guardaron correctamente.");
-      }
-
-      // Refresca la matriz y los valores
-      fetch(`http://127.0.0.1:8000/sessions/${sessionId}/competencies/${selectedCompId}/matrix`)
-        .then(r => r.json())
-        .then((data: MatrixResponse) => {
-          setMatrix(data);
-          const newLocal: LocalValue = {};
-          data.students.forEach(st => {
-            newLocal[st.id] = {};
-            data.criteria.forEach(cr => {
-              const valObj = data.values.find(
-                v => v.student_id === st.id && v.criterion_id === cr.id
-              );
-              newLocal[st.id][cr.id] = valObj ? (valObj.value as EvalValue) : "";
-            });
-          });
-          setLocalValues(newLocal);
-        });
-    } catch (e) {
-      setSaving(false);
+    if (hasError) {
       setModalMsg("Error al guardar los cambios.");
+    } else {
+      setModalMsg("Los cambios se guardaron correctamente.");
+      fetch(
+        `https://backend-web-mom-3dmj.shuttle.app/evaluation/context?session_id=${sessionId}&product_id=${product.id}&competency_id=${context.competency.id}`
+      )
+        .then(async (r) => {
+          if (!r.ok) {
+            const txt = await r.text();
+            throw new Error(txt || "Error de red");
+          }
+          return r.json();
+        })
+        .then((data: EvaluationContextResponse) => {
+          setContext(data);
+        })
+        .catch(e => {
+          setFetchError(typeof e === "string" ? e : e.message);
+        });
     }
   };
 
-  // Bloquear competencia (lock)
-  const handleLock = async () => {
-    if (!selectedCompId) return;
-    setSaving(true);
-    await fetch(`http://127.0.0.1:8000/evaluation/lock`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        session_id: Number(sessionId),
-        competency_id: selectedCompId,
-      }),
-    });
-    // Refresca estado
-    fetch(`http://127.0.0.1:8000/sessions/${sessionId}/competencies/${selectedCompId}/matrix`)
-      .then(r => r.json())
-      .then((data: MatrixResponse) => {
-        setMatrix(data);
-        setSaving(false);
-        setModalMsg("Competencia bloqueada. Ya no se puede editar.");
-      });
+  const openObsModal = (studentId: number) => {
+    setObsStudentId(studentId);
+    setObsInput(localObs[studentId] || "");
+    setObsModalOpen(true);
+  };
+  const closeObsModal = () => setObsModalOpen(false);
+  const handleSaveObs = () => {
+    if (obsStudentId !== null) {
+      setLocalObs((prev) => ({ ...prev, [obsStudentId]: obsInput }));
+    }
+    setObsModalOpen(false);
   };
 
-  // Desbloquear competencia (unlock)
-  const handleUnlock = async () => {
-    if (!selectedCompId) return;
-    setSaving(true);
-    await fetch(`http://127.0.0.1:8000/evaluation/lock`, {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        session_id: Number(sessionId),
-        competency_id: selectedCompId,
-      }),
-    });
-    // Refresca estado
-    fetch(`http://127.0.0.1:8000/sessions/${sessionId}/competencies/${selectedCompId}/matrix`)
-      .then(r => r.json())
-      .then((data: MatrixResponse) => {
-        setMatrix(data);
-        setSaving(false);
-        setModalMsg("Competencia desbloqueada. Ya se puede editar.");
-      });
-  };
-
+  if (fetchError) {
+    return (
+      <main className="min-h-screen bg-white py-12 px-8">
+        <div className="text-red-700 font-bold mb-4">{fetchError}</div>
+        <div className="text-gray-500">
+          Verifica que la URL tenga <b>sessionId</b> o que los elementos existan en la sesión.
+        </div>
+      </main>
+    );
+  }
   return (
     <main className="min-h-screen bg-white py-12 px-8">
       {modalMsg && (
+        <ModalAutoClose
+          message={modalMsg}
+          onClose={() => setModalMsg(null)}
+        />
+      )}
+      {obsModalOpen && obsStudentId !== null && context && (
         <div
           className="fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-50"
-          style={{ backdropFilter: "blur(2px)" }}
+          onClick={closeObsModal}
         >
-          <div className="bg-white rounded-lg shadow-lg p-8 text-center min-w-[300px]">
-            <h2 className="text-xl font-bold mb-4">
-              {modalMsg.includes("Error")
-                ? "Error"
-                : modalMsg.includes("bloqueada")
-                  ? "Bloqueada"
-                  : modalMsg.includes("desbloqueada")
-                    ? "Desbloqueada"
-                    : "¡Guardado!"}
+          <div
+            className="bg-white rounded-lg shadow-lg p-6 min-w-[320px] max-w-[90vw]"
+            onClick={e => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold mb-2">
+              Observación para {context.students.find(s => s.id === obsStudentId)?.full_name}
             </h2>
-            <p className="mb-6">{modalMsg}</p>
-            <div className="text-gray-400 text-sm">Este mensaje se cerrará automáticamente</div>
+            <textarea
+              className="block w-full border border-gray-300 rounded px-2 py-1 mb-4"
+              rows={4}
+              value={obsInput}
+              onChange={e => setObsInput(e.target.value)}
+              placeholder="Escribe aquí la observación del estudiante..."
+              disabled={saving}
+              maxLength={500}
+            />
+            <div className="flex gap-2 justify-end mt-2">
+              <button
+                className="px-4 py-2 rounded bg-gray-200"
+                type="button"
+                onClick={closeObsModal}
+                disabled={saving}
+              >
+                Cancelar
+              </button>
+              <button
+                className="px-4 py-2 rounded bg-blue-600 text-white font-bold"
+                type="button"
+                onClick={handleSaveObs}
+                disabled={saving}
+              >
+                Guardar observación
+              </button>
+            </div>
           </div>
         </div>
       )}
-      <h1 className="text-2xl font-bold mb-6">Evaluación</h1>
-      <div className="mb-6">
-        <label className="font-bold mr-2">Selecciona competencia a evaluar:</label>
+
+      {/* Título grande centrado: nombre de la sesión */}
+      {context && context.session?.name && (
+        <h1 className="text-3xl font-extrabold mb-2 text-blue-900 text-center">
+          {context.session.name}
+        </h1>
+      )}
+      {/* Debajo, producto en letra pequeña y centrado */}
+      {context && context.product?.name && (
+        <div className="text-center text-sm text-gray-700 mb-8">
+          Producto: <span className="font-semibold">{context.product.name}</span>
+        </div>
+      )}
+
+      {/* Selector de competencia */}
+      <div className="mb-4">
+        <label className="font-bold mr-2">Selecciona competencia:</label>
         <select
-          value={selectedCompId ?? ""}
-          onChange={e => setSelectedCompId(Number(e.target.value))}
+          value={selectedCompetencyId ?? ""}
+          onChange={e => {
+            setSelectedCompetencyId(Number(e.target.value) || null);
+            setSelectedProductId(null);
+            setContext(null);
+          }}
           className="cursor-pointer"
         >
           <option value="">Elige una competencia</option>
-          {competencias.map(c => (
-            <option key={c.id} value={c.id} className="cursor-pointer">
-              {c.name || `Competencia ${c.number}`}
-            </option>
+          {competencies.map(c => (
+            <option key={c.id} value={c.id}>{c.display_name}</option>
+          ))}
+        </select>
+      </div>
+      {/* Selector de producto */}
+      <div className="mb-6">
+        <label className="font-bold mr-2">Selecciona producto:</label>
+        <select
+          value={selectedProductId ?? ""}
+          onChange={e => {
+            setSelectedProductId(Number(e.target.value) || null);
+            setContext(null);
+          }}
+          className="cursor-pointer"
+        >
+          <option value="">Elige un producto</option>
+          {products.map(p => (
+            <option key={p.id} value={p.id}>{p.name}</option>
           ))}
         </select>
       </div>
 
-      {matrix && (
-        <div>
-          <div className="mb-4 flex gap-4 items-center">
-            <span
-              className={`font-bold px-3 py-1 rounded ${
-                matrix.locked
-                  ? "bg-red-100 text-red-700"
-                  : "bg-green-100 text-green-700"
-              }`}
-            >
-              {matrix.locked ? "Estado: BLOQUEADO (no editable)" : "Estado: DESBLOQUEADO (editable)"}
-            </span>
-            {matrix.locked ? (
-              <button
-                className="px-4 py-2 bg-yellow-600 text-white rounded font-bold cursor-pointer"
-                disabled={saving}
-                onClick={handleUnlock}
-              >
-                Desbloquear competencia
-              </button>
-            ) : (
-              <button
-                className="px-4 py-2 bg-red-600 text-white rounded font-bold cursor-pointer"
-                disabled={saving}
-                onClick={handleLock}
-              >
-                Bloquear competencia
-              </button>
-            )}
-          </div>
+      {/* Selector de habilidad */}
+      {context && (
+        <div className="mb-6">
+          <label className="font-bold mr-2">Selecciona habilidad a evaluar:</label>
+          <select
+            value={selectedAbilityId ?? ""}
+            onChange={e => setSelectedAbilityId(Number(e.target.value))}
+            className="cursor-pointer"
+          >
+            <option value="">Elige una habilidad</option>
+            {abilities.map(a => (
+              <option key={a.id} value={a.id} className="cursor-pointer">
+                {a.display_name}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+
+      {/* Renderiza la tabla de evaluación solo si hay contexto y habilidad */}
+      {context && selectedAbilityId && (
+        <div className="overflow-x-auto">
           <table className="border w-full">
             <thead>
               <tr>
-                <th className="border p-2" rowSpan={2}>Estudiante</th>
-                <th className="border p-2 text-center" colSpan={matrix.criteria.length}>
-                  {matrix.competency.display_name}
+                <th className="border p-2 align-bottom" rowSpan={3} style={{ minWidth: 180 }}>
+                  Estudiante
+                </th>
+                <th className="border p-2 text-center bg-gray-100" colSpan={context.criteria.filter(c => c.ability_id === selectedAbilityId).length}>
+                  {/* Competencia */}
+                  {context.competency.display_name}
+                </th>
+                <th className="border p-2 align-bottom" rowSpan={3} style={{ minWidth: 120 }}>
+                  Observaciones
                 </th>
               </tr>
               <tr>
-                {matrix.criteria.map(cr => (
-                  <th key={cr.id} className="border p-2">{cr.display_name}</th>
-                ))}
+                {/* Habilidad */}
+                <th className="border p-2 text-center bg-gray-50" colSpan={context.criteria.filter(c => c.ability_id === selectedAbilityId).length}>
+                  {context.abilities.find(a => a.id === selectedAbilityId)?.display_name}
+                </th>
+              </tr>
+              <tr>
+                {/* Criterios (tantas columnas como criterios) */}
+                {context.criteria
+                  .filter(c => c.ability_id === selectedAbilityId)
+                  .map(cr => (
+                    <th
+                      key={cr.id}
+                      className="border p-2 text-center"
+                    >
+                      {cr.display_name}
+                    </th>
+                  ))}
               </tr>
             </thead>
             <tbody>
-              {matrix.students.map(st => (
+              {context.students.map(st => (
                 <tr key={st.id}>
                   <td className="border p-2">{st.full_name}</td>
-                  {matrix.criteria.map(cr => (
-                    <td key={cr.id} className="border p-2">
-                      {["AD", "A", "B", "C"].map(level => (
-                        <label key={level} className="mr-2">
-                          <input
-                            type="radio"
-                            name={`eval_${st.id}_${cr.id}`}
-                            checked={localValues[st.id]?.[cr.id] === level}
-                            disabled={saving || matrix.locked}
-                            onChange={() =>
-                              handleLocalChange(st.id, cr.id, level as EvalValue)
-                            }
-                            className="cursor-pointer"
-                          />{" "}
-                          {level}
-                        </label>
-                      ))}
-                    </td>
-                  ))}
+                  {/* Checkboxes para cada criterio */}
+                  {context.criteria
+                    .filter(c => c.ability_id === selectedAbilityId)
+                    .map(cr => (
+                      <td key={cr.id} className="border p-2 text-center">
+                        {["AD", "A", "B", "C"].map(level => (
+                          <label key={level} className="mx-1 text-xs">
+                            <input
+                              type="radio"
+                              name={`eval_${st.id}_${cr.id}`}
+                              checked={localValues[st.id]?.[cr.id] === level}
+                              disabled={saving || context.locked}
+                              onChange={() =>
+                                handleLocalChange(st.id, cr.id, level as EvalValue)
+                              }
+                              className="cursor-pointer"
+                            />{" "}
+                            {level}
+                          </label>
+                        ))}
+                      </td>
+                    ))}
+                  <td className="border p-2 text-center">
+                    <button
+                      className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                      type="button"
+                      disabled={saving || context.locked}
+                      onClick={() => openObsModal(st.id)}
+                    >
+                      {localObs[st.id]?.trim()
+                        ? "Ver / Editar"
+                        : "Agregar"}
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -311,7 +434,7 @@ export default function EvaluacionPage() {
           <div className="mt-6 flex gap-4 items-center">
             <button
               className="px-4 py-2 bg-green-600 text-white rounded font-bold cursor-pointer"
-              disabled={saving || matrix.locked}
+              disabled={saving || context.locked}
               onClick={handleSave}
             >
               Guardar evaluación

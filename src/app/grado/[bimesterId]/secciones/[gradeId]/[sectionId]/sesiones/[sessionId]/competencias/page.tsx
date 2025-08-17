@@ -46,7 +46,7 @@ export default function CompetenciasPage() {
   // Cargar competencias
   const fetchCompetencies = () => {
     setLoading(true);
-    fetch(`http://127.0.0.1:8000/sessions/${sessionId}/competencies`)
+    fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}/competencies`)
       .then(r => r.json())
       .then(data => {
         setCompetencies(data);
@@ -64,7 +64,7 @@ export default function CompetenciasPage() {
     e.preventDefault();
     if (creating) return;
     setCreating(true);
-    await fetch(`http://127.0.0.1:8000/sessions/${sessionId}/competencies`, {
+    await fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}/competencies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -91,7 +91,7 @@ export default function CompetenciasPage() {
     e.preventDefault();
     if (!editCompId || editing) return;
     setEditing(true);
-    await fetch(`http://127.0.0.1:8000/competencies/${editCompId}`, {
+    await fetch(`https://backend-web-mom-3dmj.shuttle.app/competencies/${editCompId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -116,7 +116,7 @@ export default function CompetenciasPage() {
   const handleDeleteCompetency = async () => {
     if (!deleteCompId || deleting) return;
     setDeleting(true);
-    await fetch(`http://127.0.0.1:8000/competencies/${deleteCompId}`, {
+    await fetch(`https://backend-web-mom-3dmj.shuttle.app/competencies/${deleteCompId}`, {
       method: "DELETE",
     });
     setDeleting(false);
@@ -155,30 +155,27 @@ export default function CompetenciasPage() {
           ) : (
             <ul className="flex flex-col gap-4 max-w-2xl">
               {competencies.map((comp, idx) => (
-                <li
-                  key={comp.id}
-                  className="bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between"
-                >
-                  <div>
+                <li key={comp.id} className="relative group">
+                  <Link
+                    href={`/grado/${bimesterId}/secciones/${gradeId}/${sectionId}/sesiones/${sessionId}/competencias/${comp.id}/habilidades`}
+                    className="block bg-gray-50 border border-gray-200 rounded-lg px-4 py-3 shadow-sm transition"
+                    tabIndex={0}
+                  >
                     <span className="font-semibold text-lg">
                       {displayCompetencyName(comp, idx)}
                     </span>
                     {comp.description && (
                       <div className="text-sm text-gray-600 mt-1">{comp.description}</div>
                     )}
-                  </div>
-                  <span className="flex gap-2 items-center mt-2 sm:mt-0">
-                    <Link
-                      href={`/grado/${bimesterId}/secciones/${gradeId}/${sectionId}/sesiones/${sessionId}/competencias/${comp.id}/criterios`}
-                      className="ml-1 bg-green-600 text-white px-3 py-1 rounded-full font-bold shadow hover:bg-green-700 transition"
-                    >
-                      Ver criterios
-                    </Link>
+                  </Link>
+                  {/* Botones de editar/eliminar fuera del link */}
+                  <span className="absolute top-2 right-4 flex gap-2 items-center z-10">
                     {/* Editar */}
                     <button
                       className="text-blue-600 hover:text-blue-900 px-2 py-1 rounded transition cursor-pointer"
                       title="Editar competencia"
                       onClick={() => openEditModal(comp)}
+                      tabIndex={-1}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
                         <path d="M17.414 2.586a2 2 0 00-2.828 0L6 11.172V14h2.828l8.586-8.586a2 2 0 000-2.828z" />
@@ -190,9 +187,10 @@ export default function CompetenciasPage() {
                       className="text-red-600 hover:text-red-900 px-2 py-1 rounded transition cursor-pointer"
                       title="Eliminar competencia"
                       onClick={() => openDeleteModal(comp.id)}
+                      tabIndex={-1}
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                        <path fillRule="evenodd" d="M6 8a1 1 0 011 1v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9z" clipRule="evenodd" />
+                        <path fillRule="evenodd" d="M6 8a1 1 0 011 1v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9z" clipRule="evenodd" />
                         <path d="M4 6V4a2 2 0 012-2h8a2 2 0 012 2v2" />
                         <path d="M16 6H4" />
                       </svg>

@@ -50,7 +50,7 @@ export default function SesionesPage() {
   // Para crear sesión
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [newSessionTitle, setNewSessionTitle] = useState("");
-  const [newSessionDate, setNewSessionDate] = useState("");
+  const [newSessionDate, setNewSessionDate] = useState(""); // dejar vacío por defecto
   const [creating, setCreating] = useState(false);
 
   // Para editar sesión
@@ -63,7 +63,7 @@ export default function SesionesPage() {
   // Cargar contexto
   useEffect(() => {
     if (sectionId)
-      fetch(`http://127.0.0.1:8000/sections/${sectionId}`)
+      fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}`)
         .then(r => r.json())
         .then(setSection)
         .catch(() => setSection(null));
@@ -71,7 +71,7 @@ export default function SesionesPage() {
 
   useEffect(() => {
     if (gradeId)
-      fetch(`http://127.0.0.1:8000/grades/${gradeId}`)
+      fetch(`https://backend-web-mom-3dmj.shuttle.app/grades/${gradeId}`)
         .then(r => r.json())
         .then(setGrade)
         .catch(() => setGrade(null));
@@ -79,7 +79,7 @@ export default function SesionesPage() {
 
   useEffect(() => {
     if (grade && grade.bimester_id)
-      fetch(`http://127.0.0.1:8000/bimesters/${grade.bimester_id}`)
+      fetch(`https://backend-web-mom-3dmj.shuttle.app/bimesters/${grade.bimester_id}`)
         .then(r => r.json())
         .then(setBimester)
         .catch(() => setBimester(null));
@@ -88,7 +88,7 @@ export default function SesionesPage() {
   // Listar sesiones
   const fetchSessions = () => {
     if (sectionId)
-      fetch(`http://127.0.0.1:8000/sections/${sectionId}/sessions`)
+      fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}/sessions`)
         .then(r => r.json())
         .then(setSessions)
         .catch(() => setSessions([]));
@@ -105,21 +105,33 @@ export default function SesionesPage() {
   const handleCreateSession = async () => {
     if (creating) return;
     setCreating(true);
-    // Elige fecha, si no elige usa hoy
-    const date = newSessionDate || new Date().toISOString().slice(0, 10);
-    // Elige título o default
+
+    const date = newSessionDate || new Date().toISOString().split('T')[0];
     const title = newSessionTitle.trim();
-    // Si está vacío, el backend debe asignar "Sesión N" automáticamente
-    await fetch(`http://127.0.0.1:8000/sections/${sectionId}/sessions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title: title.length > 0 ? title : null, date }),
-    });
-    setCreating(false);
-    setCreateModalOpen(false);
-    setNewSessionTitle("");
-    setNewSessionDate("");
-    fetchSessions();
+    const payload = {
+      title: newSessionTitle.trim() || null,
+      date: newSessionDate || new Date().toISOString().split('T')[0]
+    };
+
+    try {
+      const res = await fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}/sessions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        alert("Error al crear la sesión: " + err);
+        return;
+      }
+      setCreateModalOpen(false);
+      setNewSessionTitle("");
+      setNewSessionDate("");
+      fetchSessions();
+    } finally {
+      setCreating(false);
+    }
   };
 
   // Eliminar sesión
@@ -131,7 +143,7 @@ export default function SesionesPage() {
   const handleDeleteSession = async () => {
     if (!sessionToDelete || deleting) return;
     setDeleting(true);
-    await fetch(`http://127.0.0.1:8000/sessions/${sessionToDelete.id}`, {
+    await fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionToDelete.id}`, {
       method: "DELETE",
     });
     setDeleting(false);
@@ -153,7 +165,7 @@ export default function SesionesPage() {
     setEditing(true);
     const title = editSessionTitle.trim();
     const date = editSessionDate || new Date().toISOString().slice(0, 10);
-    await fetch(`http://127.0.0.1:8000/sessions/${sessionToEdit.id}`, {
+    await fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionToEdit.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: title.length > 0 ? title : null, date }),

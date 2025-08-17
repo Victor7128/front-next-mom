@@ -7,7 +7,7 @@ type Bimester = { id: number; name: string };
 export default function HomePage() {
   const [bimesters, setBimesters] = useState<Bimester[]>([]);
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/bimesters")
+    fetch("https://backend-web-mom-3dmj.shuttle.app/bimesters")
       .then(res => res.json())
       .then(setBimesters)
       .catch(console.error);

@@ -37,7 +37,7 @@ export default function GradoPage() {
 
   // Cargar grados al montar y cuando se crea o elimina uno
   const fetchGrades = () => {
-    fetch(`http://127.0.0.1:8000/bimesters/${bimesterId}/grades`)
+    fetch(`https://backend-web-mom-3dmj.shuttle.app/bimesters/${bimesterId}/grades`)
       .then((res) => res.json())
       .then(setGrades)
       .catch(() => setGrades([]));
@@ -52,7 +52,7 @@ export default function GradoPage() {
   const handleCreateGrade = async () => {
     if (!gradeNumber || creating) return;
     setCreating(true);
-    await fetch(`http://127.0.0.1:8000/bimesters/${bimesterId}/grades`, {
+    await fetch(`https://backend-web-mom-3dmj.shuttle.app/bimesters/${bimesterId}/grades`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ number: gradeNumber }),
@@ -70,7 +70,7 @@ export default function GradoPage() {
 
     try {
       console.log("Eliminando grado:", gradeToDelete);
-      const response = await fetch(`http://127.0.0.1:8000/grades/${gradeToDelete.id}`, {
+      const response = await fetch(`https://backend-web-mom-3dmj.shuttle.app/grades/${gradeToDelete.id}`, {
         method: "DELETE",
       });
 

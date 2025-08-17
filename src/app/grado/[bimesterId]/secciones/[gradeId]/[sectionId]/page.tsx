@@ -52,7 +52,7 @@ export default function SeccionMenuPage() {
   // Cargar datos de sección y grado
   useEffect(() => {
     if (sectionId) {
-      fetch(`http://127.0.0.1:8000/sections/${sectionId}`)
+      fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}`)
         .then(res => res.json())
         .then(setSection)
         .catch(() => setSection(null));
@@ -61,7 +61,7 @@ export default function SeccionMenuPage() {
 
   useEffect(() => {
     if (gradeId) {
-      fetch(`http://127.0.0.1:8000/grades/${gradeId}`)
+      fetch(`https://backend-web-mom-3dmj.shuttle.app/grades/${gradeId}`)
         .then(res => res.json())
         .then(setGrade)
         .catch(() => setGrade(null));

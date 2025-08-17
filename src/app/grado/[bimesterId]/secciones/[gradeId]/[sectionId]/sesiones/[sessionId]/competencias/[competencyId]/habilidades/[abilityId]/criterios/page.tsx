@@ -3,13 +3,13 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 type Params = {
-  sessionId: string;
-  competencyId: string;
+  abilityId: string;
+  // Otros params si los necesitas, ej. sessionId, competencyId...
 };
 
 type Criterion = {
   id: number;
-  competency_id: number;
+  ability_id: number;
   number: number;
   name: string | null;
   description: string | null;
@@ -17,7 +17,7 @@ type Criterion = {
 
 export default function CriteriosPage() {
   const params = useParams() as Params;
-  const { sessionId, competencyId } = params;
+  const { abilityId } = params;
   const [criterios, setCriterios] = useState<Criterion[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -42,7 +42,12 @@ export default function CriteriosPage() {
   // Cargar criterios
   const fetchCriterios = () => {
     setLoading(true);
-    fetch(`http://127.0.0.1:8000/competencies/${competencyId}/criteria`)
+    if (!abilityId) {
+      setCriterios([]);
+      setLoading(false);
+      return;
+    }
+    fetch(`https://backend-web-mom-3dmj.shuttle.app/abilities/${abilityId}/criteria`)
       .then(r => r.json())
       .then(data => {
         setCriterios(data);
@@ -54,11 +59,10 @@ export default function CriteriosPage() {
       });
   };
 
-  useEffect(fetchCriterios, [competencyId]);
+  useEffect(fetchCriterios, [abilityId]);
 
   // Genera nombre por defecto (C1, C2, ...)
   function getDefaultName() {
-    // Encuentra el primer nombre del tipo C{n} no usado
     let i = 1;
     const nombresUsados = new Set(
       criterios.map(c => (c.name ? c.name.trim().toUpperCase() : ""))
@@ -70,12 +74,11 @@ export default function CriteriosPage() {
   // Crear criterio
   const handleCreateCriterion = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (creating) return;
+    if (creating || !abilityId) return;
     let nombreFinal = newName.trim();
     if (!nombreFinal) {
       nombreFinal = getDefaultName();
     }
-    // Valida que no se repita el nombre
     if (
       criterios.some(
         c => c.name && c.name.trim().toUpperCase() === nombreFinal.toUpperCase()
@@ -86,7 +89,7 @@ export default function CriteriosPage() {
       return;
     }
     setCreating(true);
-    await fetch(`http://127.0.0.1:8000/competencies/${competencyId}/criteria`, {
+    await fetch(`https://backend-web-mom-3dmj.shuttle.app/abilities/${abilityId}/criteria`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -117,7 +120,6 @@ export default function CriteriosPage() {
     if (!nombreFinal) {
       nombreFinal = getDefaultName();
     }
-    // Valida que no se repita el nombre
     if (
       criterios.some(
         c => c.id !== editId &&
@@ -130,7 +132,7 @@ export default function CriteriosPage() {
       return;
     }
     setEditing(true);
-    await fetch(`http://127.0.0.1:8000/criteria/${editId}`, {
+    await fetch(`https://backend-web-mom-3dmj.shuttle.app/criteria/${editId}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -156,7 +158,7 @@ export default function CriteriosPage() {
   const handleDeleteCriterion = async () => {
     if (deleting || deleteId === null) return;
     setDeleting(true);
-    await fetch(`http://127.0.0.1:8000/criteria/${deleteId}`, {
+    await fetch(`https://backend-web-mom-3dmj.shuttle.app/criteria/${deleteId}`, {
       method: "DELETE",
     });
     setDeleting(false);
@@ -172,14 +174,14 @@ export default function CriteriosPage() {
         className="fixed top-6 right-8 bg-green-600 text-white px-5 py-3 rounded-full font-bold shadow-lg hover:bg-green-700 transition z-50 cursor-pointer"
         onClick={() => {
           setModalOpen(true);
-          setNewName(""); // Limpiar al abrir
+          setNewName("");
           setNewDesc("");
         }}
       >
         + Agregar criterio
       </button>
       <h1 className="text-2xl font-bold text-gray-800 mb-6">
-        Criterios de la competencia
+        Criterios de la habilidad
       </h1>
       {loading ? (
         <div className="text-gray-500">Cargando criterios...</div>
@@ -187,7 +189,7 @@ export default function CriteriosPage() {
         <ul className="flex flex-col gap-4 max-w-2xl">
           {criterios.length === 0 ? (
             <div className="text-gray-500 mb-8">
-              No hay criterios registrados para esta competencia.
+              No hay criterios registrados para esta habilidad.
             </div>
           ) : (
             criterios.map((cr) => (
@@ -224,7 +226,7 @@ export default function CriteriosPage() {
                     onClick={() => openDeleteModal(cr.id)}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M6 8a1 1 0 011 1v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9z" clipRule="evenodd" />
+                      <path fillRule="evenodd" d="M6 8a1 1 0 011 1v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9a1 1 0 112 0v6a1 1 0 102 0V9z" clipRule="evenodd" />
                       <path d="M4 6V4a2 2 0 012-2h8a2 2 0 012 2v2" />
                       <path d="M16 6H4" />
                     </svg>
