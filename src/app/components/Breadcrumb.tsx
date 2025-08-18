@@ -19,13 +19,25 @@ interface BreadcrumbProps {
 export const Breadcrumb: React.FC<BreadcrumbProps> = ({
   items,
   className = "",
-  separator = <span className="mx-1 text-gray-400">/</span>,
+  separator = (
+    <span className="mx-1 text-indigo-300" aria-hidden="true">
+      <svg
+        className="inline w-3 h-3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        viewBox="0 0 20 20"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M7 7l5 5m0-5l-5 5" />
+      </svg>
+    </span>
+  ),
   lastAsLink = false,
 }) => {
   if (!items || !items.length) return null;
 
   return (
-    <nav aria-label="Breadcrumb" className={className}>
+    <nav aria-label="Breadcrumb" className={`${className} select-none`}>
       <ol className="inline-flex items-center flex-wrap gap-1">
         {items.map((item, idx) => {
           const isLast = idx === items.length - 1;
@@ -33,12 +45,12 @@ export const Breadcrumb: React.FC<BreadcrumbProps> = ({
             (!isLast || (isLast && lastAsLink)) && item.href ? (
               <Link
                 href={item.href}
-                className="inline-flex items-center gap-1 text-gray-600 hover:text-gray-900 transition-colors"
+                className="inline-flex items-center gap-1 text-indigo-700 hover:text-indigo-900 transition-colors font-medium underline underline-offset-2"
               >
                 {item.label}
               </Link>
             ) : (
-              <span className="text-gray-900 font-medium">
+              <span className="text-indigo-950 font-bold">
                 {item.label}
               </span>
             );
