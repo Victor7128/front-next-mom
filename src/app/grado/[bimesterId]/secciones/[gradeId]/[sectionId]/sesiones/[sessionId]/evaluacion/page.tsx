@@ -69,14 +69,14 @@ export default function EvaluacionPage() {
       setFetchError("Falta sessionId en la URL.");
       return;
     }
-    fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}/competencies`)
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sessions/${sessionId}/competencies`)
       .then(r => r.json())
       .then((data: any[]) => setCompetencies(data.map(c => ({
         id: c.id,
         display_name: c.name ?? `Competencia ${c.number}`
       }))))
       .catch(() => setFetchError("Error al cargar competencias."));
-    fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}/products`)
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sessions/${sessionId}/products`)
       .then(r => r.json())
       .then((data: any[]) => setProducts(data.map(p => ({
         id: p.id,
@@ -93,7 +93,7 @@ export default function EvaluacionPage() {
     if (!sessionId || !selectedCompetencyId || !selectedProductId) {
       return;
     }
-    fetch(`https://backend-web-mom-3dmj.shuttle.app/evaluation/context?session_id=${sessionId}&product_id=${selectedProductId}&competency_id=${selectedCompetencyId}`)
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/evaluation/context?session_id=${sessionId}&product_id=${selectedProductId}&competency_id=${selectedCompetencyId}`)
       .then(async r => {
         if (!r.ok) throw new Error(await r.text());
         return r.json();
@@ -159,7 +159,7 @@ export default function EvaluacionPage() {
       criteria.forEach((cr) => {
         const value = localValues[st.id]?.[cr.id] ?? "";
         promises.push(
-          fetch(`https://backend-web-mom-3dmj.shuttle.app/evaluation/value`, {
+          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/evaluation/value`, {
             method: "PUT",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -192,7 +192,7 @@ export default function EvaluacionPage() {
     } else {
       setModalMsg("Los cambios se guardaron correctamente.");
       fetch(
-        `https://backend-web-mom-3dmj.shuttle.app/evaluation/context?session_id=${sessionId}&product_id=${product.id}&competency_id=${context.competency.id}`
+        `${process.env.NEXT_PUBLIC_BACKEND_URL}/evaluation/context?session_id=${sessionId}&product_id=${product.id}&competency_id=${context.competency.id}`
       )
         .then(async (r) => {
           if (!r.ok) {
@@ -225,7 +225,7 @@ export default function EvaluacionPage() {
 
   if (fetchError) {
     return (
-      <main className="min-h-screen bg-white py-12 px-8">
+      <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
         <div className="text-red-700 font-bold mb-4">{fetchError}</div>
         <div className="text-gray-500">
           Verifica que la URL tenga <b>sessionId</b> o que los elementos existan en la sesión.
@@ -234,7 +234,7 @@ export default function EvaluacionPage() {
     );
   }
   return (
-    <main className="min-h-screen bg-white py-12 px-8">
+    <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
       {modalMsg && (
         <ModalAutoClose
           message={modalMsg}
@@ -243,18 +243,18 @@ export default function EvaluacionPage() {
       )}
       {obsModalOpen && obsStudentId !== null && context && (
         <div
-          className="fixed inset-0 bg-black bg-opacity-25 flex items-center justify-center z-50"
+          className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
           onClick={closeObsModal}
         >
           <div
-            className="bg-white rounded-lg shadow-lg p-6 min-w-[320px] max-w-[90vw]"
+            className="bg-white rounded-2xl shadow-2xl p-8 min-w-[320px] w-full max-w-xs flex flex-col gap-5 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-2">
+            <h2 className="text-2xl font-bold mb-2 text-blue-700 text-center">
               Observación para {context.students.find(s => s.id === obsStudentId)?.full_name}
             </h2>
             <textarea
-              className="block w-full border border-gray-300 rounded px-2 py-1 mb-4"
+              className="block w-full border border-blue-200 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
               rows={4}
               value={obsInput}
               onChange={e => setObsInput(e.target.value)}
@@ -262,9 +262,9 @@ export default function EvaluacionPage() {
               disabled={saving}
               maxLength={500}
             />
-            <div className="flex gap-2 justify-end mt-2">
+            <div className="flex gap-3 justify-end mt-2">
               <button
-                className="px-4 py-2 rounded bg-gray-200"
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"
                 type="button"
                 onClick={closeObsModal}
                 disabled={saving}
@@ -272,7 +272,7 @@ export default function EvaluacionPage() {
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded bg-blue-600 text-white font-bold"
+                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition disabled:bg-blue-400"
                 type="button"
                 onClick={handleSaveObs}
                 disabled={saving}
@@ -292,14 +292,14 @@ export default function EvaluacionPage() {
       )}
       {/* Debajo, producto en letra pequeña y centrado */}
       {context && context.product?.name && (
-        <div className="text-center text-sm text-gray-700 mb-8">
+        <div className="text-center text-base text-gray-700 mb-8">
           Producto: <span className="font-semibold">{context.product.name}</span>
         </div>
       )}
 
       {/* Selector de competencia */}
-      <div className="mb-4">
-        <label className="font-bold mr-2">Selecciona competencia:</label>
+      <div className="w-full max-w-2xl mb-4">
+        <label className="font-bold mr-2 text-lg">Selecciona competencia:</label>
         <select
           value={selectedCompetencyId ?? ""}
           onChange={e => {
@@ -307,7 +307,7 @@ export default function EvaluacionPage() {
             setSelectedProductId(null);
             setContext(null);
           }}
-          className="cursor-pointer"
+          className="cursor-pointer border border-indigo-200 rounded-lg px-3 py-2 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-indigo-300 transition bg-white"
         >
           <option value="">Elige una competencia</option>
           {competencies.map(c => (
@@ -316,15 +316,15 @@ export default function EvaluacionPage() {
         </select>
       </div>
       {/* Selector de producto */}
-      <div className="mb-6">
-        <label className="font-bold mr-2">Selecciona producto:</label>
+      <div className="w-full max-w-2xl mb-6">
+        <label className="font-bold mr-2 text-lg">Selecciona producto:</label>
         <select
           value={selectedProductId ?? ""}
           onChange={e => {
             setSelectedProductId(Number(e.target.value) || null);
             setContext(null);
           }}
-          className="cursor-pointer"
+          className="cursor-pointer border border-indigo-200 rounded-lg px-3 py-2 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-indigo-300 transition bg-white"
         >
           <option value="">Elige un producto</option>
           {products.map(p => (
@@ -335,12 +335,12 @@ export default function EvaluacionPage() {
 
       {/* Selector de habilidad */}
       {context && (
-        <div className="mb-6">
-          <label className="font-bold mr-2">Selecciona habilidad a evaluar:</label>
+        <div className="w-full max-w-2xl mb-6">
+          <label className="font-bold mr-2 text-lg">Selecciona habilidad a evaluar:</label>
           <select
             value={selectedAbilityId ?? ""}
             onChange={e => setSelectedAbilityId(Number(e.target.value))}
-            className="cursor-pointer"
+            className="cursor-pointer border border-indigo-200 rounded-lg px-3 py-2 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-indigo-300 transition bg-white"
           >
             <option value="">Elige una habilidad</option>
             {abilities.map(a => (
@@ -354,35 +354,32 @@ export default function EvaluacionPage() {
 
       {/* Renderiza la tabla de evaluación solo si hay contexto y habilidad */}
       {context && selectedAbilityId && (
-        <div className="overflow-x-auto">
-          <table className="border w-full">
+        <div className="overflow-x-auto w-full max-w-4xl">
+          <table className="border w-full rounded-xl shadow bg-white/90">
             <thead>
               <tr>
-                <th className="border p-2 align-bottom" rowSpan={3} style={{ minWidth: 180 }}>
+                <th className="border p-2 align-bottom bg-indigo-100 text-indigo-800 font-semibold" rowSpan={3} style={{ minWidth: 180 }}>
                   Estudiante
                 </th>
-                <th className="border p-2 text-center bg-gray-100" colSpan={context.criteria.filter(c => c.ability_id === selectedAbilityId).length}>
-                  {/* Competencia */}
+                <th className="border p-2 text-center bg-indigo-50 text-indigo-900 font-semibold" colSpan={context.criteria.filter(c => c.ability_id === selectedAbilityId).length}>
                   {context.competency.display_name}
                 </th>
-                <th className="border p-2 align-bottom" rowSpan={3} style={{ minWidth: 120 }}>
+                <th className="border p-2 align-bottom bg-indigo-100 text-indigo-800 font-semibold" rowSpan={3} style={{ minWidth: 120 }}>
                   Observaciones
                 </th>
               </tr>
               <tr>
-                {/* Habilidad */}
-                <th className="border p-2 text-center bg-gray-50" colSpan={context.criteria.filter(c => c.ability_id === selectedAbilityId).length}>
+                <th className="border p-2 text-center bg-indigo-50 text-indigo-900" colSpan={context.criteria.filter(c => c.ability_id === selectedAbilityId).length}>
                   {context.abilities.find(a => a.id === selectedAbilityId)?.display_name}
                 </th>
               </tr>
               <tr>
-                {/* Criterios (tantas columnas como criterios) */}
                 {context.criteria
                   .filter(c => c.ability_id === selectedAbilityId)
                   .map(cr => (
                     <th
                       key={cr.id}
-                      className="border p-2 text-center"
+                      className="border p-2 text-center bg-indigo-50 text-indigo-900"
                     >
                       {cr.display_name}
                     </th>
@@ -391,15 +388,14 @@ export default function EvaluacionPage() {
             </thead>
             <tbody>
               {context.students.map(st => (
-                <tr key={st.id}>
-                  <td className="border p-2">{st.full_name}</td>
-                  {/* Checkboxes para cada criterio */}
+                <tr key={st.id} className="odd:bg-white even:bg-indigo-50">
+                  <td className="border p-2 font-semibold text-indigo-900">{st.full_name}</td>
                   {context.criteria
                     .filter(c => c.ability_id === selectedAbilityId)
                     .map(cr => (
                       <td key={cr.id} className="border p-2 text-center">
                         {["AD", "A", "B", "C"].map(level => (
-                          <label key={level} className="mx-1 text-xs">
+                          <label key={level} className="mx-1 text-xs font-semibold text-indigo-700">
                             <input
                               type="radio"
                               name={`eval_${st.id}_${cr.id}`}
@@ -408,7 +404,7 @@ export default function EvaluacionPage() {
                               onChange={() =>
                                 handleLocalChange(st.id, cr.id, level as EvalValue)
                               }
-                              className="cursor-pointer"
+                              className="cursor-pointer accent-indigo-600"
                             />{" "}
                             {level}
                           </label>
@@ -417,7 +413,7 @@ export default function EvaluacionPage() {
                     ))}
                   <td className="border p-2 text-center">
                     <button
-                      className="px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                      className={`px-3 py-1 rounded-lg font-semibold ${localObs[st.id]?.trim() ? "bg-blue-100 text-blue-700 hover:bg-blue-200" : "bg-gray-100 text-gray-700 hover:bg-gray-200"} transition`}
                       type="button"
                       disabled={saving || context.locked}
                       onClick={() => openObsModal(st.id)}
@@ -431,9 +427,9 @@ export default function EvaluacionPage() {
               ))}
             </tbody>
           </table>
-          <div className="mt-6 flex gap-4 items-center">
+          <div className="mt-6 flex gap-4 items-center justify-end">
             <button
-              className="px-4 py-2 bg-green-600 text-white rounded font-bold cursor-pointer"
+              className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold shadow transition disabled:bg-green-400 focus:outline-none focus:ring-2 focus:ring-green-400"
               disabled={saving || context.locked}
               onClick={handleSave}
             >

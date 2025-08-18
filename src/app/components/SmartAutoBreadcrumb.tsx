@@ -53,7 +53,7 @@ export const SmartAutoBreadcrumb: React.FC<SmartAutoBreadcrumbProps> = ({
   useEffect(() => {
     let active = true;
     if (gradeId) {
-      fetch(`http://127.0.0.1:8000/grades/${gradeId}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/grades/${gradeId}`)
         .then(r => (r.ok ? r.json() : null))
         .then(d => active && setGradeData(d))
         .catch(() => active && setGradeData(null));
@@ -66,7 +66,7 @@ export const SmartAutoBreadcrumb: React.FC<SmartAutoBreadcrumbProps> = ({
   useEffect(() => {
     let active = true;
     if (sectionId) {
-      fetch(`http://127.0.0.1:8000/sections/${sectionId}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}`)
         .then(r => (r.ok ? r.json() : null))
         .then(d => active && setSectionData(d))
         .catch(() => active && setSectionData(null));

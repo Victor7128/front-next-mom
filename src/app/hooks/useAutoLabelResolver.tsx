@@ -16,7 +16,7 @@ interface FetchResult {
 async function resolveSegment(segment: string): Promise<FetchResult | null> {
   // 1. Sección
   try {
-    const r = await fetch(`http://127.0.0.1:8000/sections/${segment}`);
+    const r = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${segment}`);
     if (r.ok) {
       const data = await r.json();
       return { label: `Sección ${data.letter ?? segment}` };
@@ -24,7 +24,7 @@ async function resolveSegment(segment: string): Promise<FetchResult | null> {
   } catch {}
   // 2. Grado
   try {
-    const r = await fetch(`http://127.0.0.1:8000/grades/${segment}`);
+    const r = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/grades/${segment}`);
     if (r.ok) {
       const data = await r.json();
       const extra: Record<string,string> = {};

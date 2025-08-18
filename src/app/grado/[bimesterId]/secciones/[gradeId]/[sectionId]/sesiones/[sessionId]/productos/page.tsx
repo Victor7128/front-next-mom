@@ -39,7 +39,7 @@ export default function ProductoPage() {
   const fetchProducts = () => {
     if (!sessionId) return;
     setLoading(true);
-    fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}/products`)
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sessions/${sessionId}/products`)
       .then(r => r.json())
       .then(setProducts)
       .catch(() => setProducts([]))
@@ -59,7 +59,7 @@ export default function ProductoPage() {
     e.preventDefault();
     if (!newName.trim() && !newDescription.trim()) return;
     setAdding(true);
-    await fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}/products`, {
+    await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sessions/${sessionId}/products`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -84,7 +84,7 @@ export default function ProductoPage() {
   const handleEditProduct = async () => {
     if (!productToEdit) return;
     setEditing(true);
-    await fetch(`https://backend-web-mom-3dmj.shuttle.app/products/${productToEdit.id}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/products/${productToEdit.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -106,7 +106,7 @@ export default function ProductoPage() {
   const handleDeleteProduct = async () => {
     if (!productToDelete) return;
     setDeleting(true);
-    await fetch(`https://backend-web-mom-3dmj.shuttle.app/products/${productToDelete.id}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/products/${productToDelete.id}`, {
       method: "DELETE",
     });
     setDeleting(false);
@@ -116,13 +116,13 @@ export default function ProductoPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white py-8 px-4">
-      <div className="mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">
+    <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
+      <div className="w-full max-w-2xl mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700">
           Productos de la sesión
         </h1>
         <button
-          className="bg-green-600 text-white rounded px-4 py-2 font-bold shadow hover:bg-green-700 transition cursor-pointer"
+          className="bg-green-600 text-white rounded-full px-6 py-2 font-semibold shadow hover:bg-green-700 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-400 active:scale-95"
           onClick={openAddModal}
         >
           + Agregar nuevo producto
@@ -130,57 +130,59 @@ export default function ProductoPage() {
       </div>
 
       {/* Lista de productos */}
-      {loading ? (
-        <div className="text-gray-500">Cargando productos...</div>
-      ) : products.length === 0 ? (
-        <div className="text-gray-500">No hay productos registrados en esta sesión.</div>
-      ) : (
-        <ul className="flex flex-col gap-2 max-w-2xl">
-          {products.map(prod => (
-            <li
-              key={prod.id}
-              className="bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3 flex justify-between items-center"
-            >
-              <div>
-                <span className="font-semibold text-gray-800">{prod.name || <i>Sin nombre</i>}</span>
-                {prod.description && (
-                  <div className="text-gray-600 text-sm">{prod.description}</div>
-                )}
-                <div className="text-xs text-gray-400"># {prod.number}</div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  className="px-2 py-1 rounded bg-yellow-200 hover:bg-yellow-300 text-yellow-900 font-bold cursor-pointer"
-                  onClick={() => openEditModal(prod)}
-                  title="Editar producto"
-                >
-                  Editar
-                </button>
-                <button
-                  className="px-2 py-1 rounded bg-red-200 hover:bg-red-300 text-red-900 font-bold cursor-pointer"
-                  onClick={() => openDeleteModal(prod)}
-                  title="Eliminar producto"
-                >
-                  Eliminar
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="w-full max-w-2xl">
+        {loading ? (
+          <div className="text-gray-500 text-lg text-center py-8">Cargando productos...</div>
+        ) : products.length === 0 ? (
+          <div className="text-gray-500 text-lg text-center py-8">No hay productos registrados en esta sesión.</div>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {products.map(prod => (
+              <li
+                key={prod.id}
+                className="bg-white/90 border border-indigo-200 rounded-2xl shadow-sm px-6 py-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 transition-all hover:shadow-lg hover:bg-indigo-50 hover:border-indigo-400"
+              >
+                <div className="flex-1 min-w-0">
+                  <span className="font-semibold text-indigo-900 text-lg">{prod.name || <i>Sin nombre</i>}</span>
+                  {prod.description && (
+                    <div className="text-gray-700 text-base mt-1 break-words">{prod.description}</div>
+                  )}
+                  <div className="text-xs text-gray-400 mt-2"># {prod.number}</div>
+                </div>
+                <div className="flex gap-2 mt-2 sm:mt-0">
+                  <button
+                    className="px-4 py-2 rounded-lg bg-yellow-100 hover:bg-yellow-200 text-yellow-900 font-semibold shadow-sm transition"
+                    onClick={() => openEditModal(prod)}
+                    title="Editar producto"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    className="px-4 py-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-900 font-semibold shadow-sm transition"
+                    onClick={() => openDeleteModal(prod)}
+                    title="Eliminar producto"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {/* Modal de agregar producto */}
       {addModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50" onClick={() => setAddModalOpen(false)}>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50" onClick={() => setAddModalOpen(false)}>
           <div
-            className="bg-white rounded-xl p-6 shadow-xl min-w-[300px] flex flex-col gap-4 max-w-[90vw]"
+            className="bg-white rounded-2xl p-8 shadow-2xl min-w-[320px] w-full max-w-xs flex flex-col gap-5 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-2 text-green-700">Agregar nuevo producto</h2>
+            <h2 className="text-2xl font-bold mb-2 text-green-700 text-center">Agregar nuevo producto</h2>
             <form className="flex flex-col gap-3" onSubmit={handleAddProduct}>
               <input
                 type="text"
-                className="border border-gray-300 rounded px-3 py-2 w-full"
+                className="border border-green-200 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-300 transition"
                 placeholder="Nombre del producto (opcional)"
                 value={newName}
                 onChange={e => setNewName(e.target.value)}
@@ -189,16 +191,16 @@ export default function ProductoPage() {
               />
               <input
                 type="text"
-                className="border border-gray-300 rounded px-3 py-2 w-full"
+                className="border border-green-200 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-green-300 transition"
                 placeholder="Descripción (opcional)"
                 value={newDescription}
                 onChange={e => setNewDescription(e.target.value)}
                 disabled={adding}
               />
-              <div className="flex gap-2 justify-end mt-4">
+              <div className="flex gap-3 justify-end mt-2">
                 <button
                   type="button"
-                  className="px-4 py-2 rounded bg-gray-200 cursor-pointer"
+                  className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"
                   onClick={() => setAddModalOpen(false)}
                   disabled={adding}
                 >
@@ -206,7 +208,7 @@ export default function ProductoPage() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded bg-green-600 text-white font-bold cursor-pointer"
+                  className="px-4 py-2 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold transition disabled:bg-green-400"
                   disabled={adding || (!newName.trim() && !newDescription.trim())}
                 >
                   Agregar
@@ -219,38 +221,39 @@ export default function ProductoPage() {
 
       {/* Modal de edición */}
       {editModalOpen && productToEdit && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50" onClick={() => setEditModalOpen(false)}>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50" onClick={() => setEditModalOpen(false)}>
           <div
-            className="bg-white rounded-xl p-6 shadow-xl min-w-[300px] flex flex-col gap-4"
+            className="bg-white rounded-2xl p-8 shadow-2xl min-w-[320px] w-full max-w-xs flex flex-col gap-5 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-2 text-yellow-700">Editar producto</h2>
+            <h2 className="text-2xl font-bold mb-2 text-yellow-700 text-center">Editar producto</h2>
             <input
               type="text"
-              className="border border-gray-300 rounded px-3 py-2 w-full"
+              className="border border-yellow-200 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-yellow-300 transition"
               placeholder="Nombre del producto"
               value={editName}
               onChange={e => setEditName(e.target.value)}
               disabled={editing}
+              autoFocus
             />
             <input
               type="text"
-              className="border border-gray-300 rounded px-3 py-2 w-full"
+              className="border border-yellow-200 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-yellow-300 transition"
               placeholder="Descripción"
               value={editDescription}
               onChange={e => setEditDescription(e.target.value)}
               disabled={editing}
             />
-            <div className="flex gap-2 justify-end mt-4">
+            <div className="flex gap-3 justify-end mt-2">
               <button
-                className="px-4 py-2 rounded bg-gray-200 cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"
                 onClick={() => setEditModalOpen(false)}
                 disabled={editing}
               >
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded bg-yellow-600 text-white font-bold cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white font-bold transition disabled:bg-yellow-400"
                 onClick={handleEditProduct}
                 disabled={editing}
               >
@@ -263,25 +266,25 @@ export default function ProductoPage() {
 
       {/* Modal de confirmación de eliminación */}
       {deleteModalOpen && productToDelete && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50" onClick={() => setDeleteModalOpen(false)}>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50" onClick={() => setDeleteModalOpen(false)}>
           <div
-            className="bg-white rounded-xl p-6 shadow-xl min-w-[300px] flex flex-col gap-4"
+            className="bg-white rounded-2xl p-8 shadow-2xl min-w-[320px] w-full max-w-xs flex flex-col gap-5 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-2 text-red-700">Eliminar producto</h2>
-            <div className="text-gray-800">
+            <h2 className="text-2xl font-bold mb-2 text-red-700 text-center">Eliminar producto</h2>
+            <div className="text-gray-800 text-center">
               ¿Estás seguro de que deseas eliminar el producto <b>{productToDelete.name || "sin nombre"}</b>?
             </div>
-            <div className="flex gap-2 justify-end mt-4">
+            <div className="flex gap-3 justify-end mt-2">
               <button
-                className="px-4 py-2 rounded bg-gray-200 cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"
                 onClick={() => setDeleteModalOpen(false)}
                 disabled={deleting}
               >
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded bg-red-600 text-white font-bold cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold transition disabled:bg-red-400"
                 onClick={handleDeleteProduct}
                 disabled={deleting}
               >

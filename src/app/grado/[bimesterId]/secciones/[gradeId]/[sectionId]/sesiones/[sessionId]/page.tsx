@@ -54,7 +54,7 @@ export default function DetalleSesionPage() {
   // Cargar datos
   useEffect(() => {
     if (sectionId)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}`)
         .then(r => r.json())
         .then(setSection)
         .catch(() => setSection(null));
@@ -62,7 +62,7 @@ export default function DetalleSesionPage() {
 
   useEffect(() => {
     if (gradeId)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/grades/${gradeId}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/grades/${gradeId}`)
         .then(r => r.json())
         .then(setGrade)
         .catch(() => setGrade(null));
@@ -70,7 +70,7 @@ export default function DetalleSesionPage() {
 
   useEffect(() => {
     if (grade && grade.bimester_id)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/bimesters/${grade.bimester_id}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/bimesters/${grade.bimester_id}`)
         .then(r => r.json())
         .then(setBimester)
         .catch(() => setBimester(null));
@@ -78,7 +78,7 @@ export default function DetalleSesionPage() {
 
   useEffect(() => {
     if (sessionId)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sessions/${sessionId}`)
         .then(r => r.json())
         .then(setSession)
         .catch(() => setSession(null));
@@ -87,19 +87,19 @@ export default function DetalleSesionPage() {
   // Cargar productos de la sesión
   useEffect(() => {
     if (sessionId)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionId}/products`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sessions/${sessionId}/products`)
         .then(r => r.json())
         .then(setProducts)
         .catch(() => setProducts([]));
   }, [sessionId]);
 
   return (
-    <main className="min-h-screen bg-white py-12 px-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
+    <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
+      <div className="w-full max-w-2xl mb-10">
+        <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700 mb-3 text-center sm:text-left">
           {session?.title ?? ""}
         </h1>
-        <div className="text-gray-700 mb-2">
+        <div className="text-gray-700 text-lg text-center sm:text-left mb-2">
           {session?.date && (
             <span className="mr-4">
               Fecha: <b>{session.date.slice(0, 10)}</b>
@@ -124,17 +124,18 @@ export default function DetalleSesionPage() {
       </div>
 
       {/* Tarjetas de navegación */}
-      <ul className="flex flex-col sm:flex-row gap-8 justify-center items-center">
+      <ul className="grid grid-cols-1 sm:grid-cols-3 gap-7 w-full max-w-2xl">
         {cards.map(card => (
-          <Link
-            key={card.key}
-            href={card.href(bimesterId, gradeId, sectionId, sessionId)}
-            className="w-full sm:w-64 bg-white border border-gray-300 rounded-xl shadow-md p-8 flex flex-col items-center transition hover:scale-105 hover:shadow-lg cursor-pointer no-underline"
-            aria-label={`Ir a ${card.label} de la sesión`}
-          >
-            <span className="mb-4 text-4xl">{card.icon}</span>
-            <span className="text-xl font-semibold text-gray-900">{card.label}</span>
-          </Link>
+          <li key={card.key}>
+            <Link
+              href={card.href(bimesterId, gradeId, sectionId, sessionId)}
+              className="h-full rounded-2xl bg-white/90 border border-indigo-200 shadow-sm p-10 flex flex-col items-center text-center transition-all hover:shadow-xl hover:bg-indigo-50 hover:border-indigo-400 cursor-pointer no-underline focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              aria-label={`Ir a ${card.label} de la sesión`}
+            >
+              <span className="mb-4 text-5xl">{card.icon}</span>
+              <span className="text-xl font-semibold text-indigo-800">{card.label}</span>
+            </Link>
+          </li>
         ))}
       </ul>
     </main>

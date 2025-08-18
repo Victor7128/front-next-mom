@@ -15,6 +15,7 @@ const cards: CardDef[] = [
     key: "alumnos",
     label: "Alumnos",
     href: (b, g, s) => `/grado/${b}/secciones/${g}/${s}/alumnos`,
+    // Puedes agregar un icono SVG aquí si lo deseas
   },
   {
     key: "sesiones",
@@ -52,7 +53,7 @@ export default function SeccionMenuPage() {
   // Cargar datos de sección y grado
   useEffect(() => {
     if (sectionId) {
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}`)
         .then(res => res.json())
         .then(setSection)
         .catch(() => setSection(null));
@@ -61,7 +62,7 @@ export default function SeccionMenuPage() {
 
   useEffect(() => {
     if (gradeId) {
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/grades/${gradeId}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/grades/${gradeId}`)
         .then(res => res.json())
         .then(setGrade)
         .catch(() => setGrade(null));
@@ -69,12 +70,12 @@ export default function SeccionMenuPage() {
   }, [gradeId]);
 
   return (
-    <main className="min-h-screen bg-white py-12 px-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
+    <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-12">
+      <div className="w-full max-w-xl mb-10">
+        <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700 mb-3 text-center sm:text-left">
           Opciones de la Sección {section ? section.letter : "?"}
         </h1>
-        <div className="text-gray-700">
+        <div className="text-gray-700 text-lg text-center sm:text-left">
           {grade && (
             <span className="mr-4">
               Grado: <b>{grade.number}°</b>
@@ -87,17 +88,18 @@ export default function SeccionMenuPage() {
           )}
         </div>
       </div>
-      <ul className="flex flex-col sm:flex-row gap-8 justify-center items-center">
+      <ul className="grid grid-cols-1 sm:grid-cols-3 gap-7 w-full max-w-2xl">
         {cards.map(card => (
-          <Link
-            key={card.key}
-            href={card.href(bimesterId, gradeId, sectionId)}
-            className="w-full sm:w-64 bg-white border border-gray-300 rounded-xl shadow-md p-8 flex flex-col items-center transition hover:scale-105 hover:shadow-lg cursor-pointer no-underline"
-            aria-label={`Ir a ${card.label} de la sección`}
-          >
-            {card.icon && <span className="mb-4">{card.icon}</span>}
-            <span className="text-xl font-semibold text-gray-900">{card.label}</span>
-          </Link>
+          <li key={card.key}>
+            <Link
+              href={card.href(bimesterId, gradeId, sectionId)}
+              className="h-full rounded-2xl bg-white/90 border border-indigo-200 shadow-sm p-8 flex flex-col items-center text-center transition-all hover:shadow-xl hover:bg-indigo-50 hover:border-indigo-400 cursor-pointer no-underline focus:outline-none focus:ring-2 focus:ring-indigo-300"
+              aria-label={`Ir a ${card.label} de la sección`}
+            >
+              {card.icon && <span className="mb-4">{card.icon}</span>}
+              <span className="text-xl font-semibold text-indigo-800">{card.label}</span>
+            </Link>
+          </li>
         ))}
       </ul>
     </main>

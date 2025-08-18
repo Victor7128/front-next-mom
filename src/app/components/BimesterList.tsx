@@ -14,10 +14,7 @@ export default function BimesterList({ bimesters }: BimesterListProps) {
   return (
     <div
       className="
-        flex flex-col gap-4
-        sm:flex-row sm:flex-wrap
-        justify-center items-center
-        mt-4
+        grid grid-cols-1 sm:grid-cols-2 gap-6
       "
     >
       {bimesters.map((bimester) => (
@@ -25,21 +22,24 @@ export default function BimesterList({ bimesters }: BimesterListProps) {
           key={bimester.id}
           href={`/grado/${bimester.id}`}
           className="
-            w-full sm:w-64
-            bg-white
-            border border-gray-300
-            rounded-xl
-            shadow-md
+            group
+            rounded-2xl
+            bg-white/80
+            border border-indigo-200
+            shadow-sm
             p-6
             flex flex-col items-center
-            transition
-            hover:scale-105 hover:shadow-lg
+            transition-all
+            hover:shadow-xl hover:bg-indigo-50 hover:border-indigo-300
+            focus:outline-none focus:ring-2 focus:ring-indigo-400
+            active:scale-[0.98]
             cursor-pointer
             text-inherit
             no-underline
+            min-h-[100px]
           "
         >
-          <span className="text-lg font-semibold text-gray-800">
+          <span className="text-xl font-medium text-indigo-800 group-hover:text-indigo-900 transition">
             {bimester.name}
           </span>
         </Link>

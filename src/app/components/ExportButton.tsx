@@ -39,7 +39,7 @@ export const ExportButton: React.FC<ExportButtonProps> = ({
     <button
       onClick={handleExport}
       disabled={loading}
-      className="px-3 py-2 rounded bg-green-600 text-white text-sm hover:bg-green-700 disabled:opacity-60 cursor-pointer"
+      className="px-4 py-2 rounded-lg bg-green-600 text-white text-base font-semibold shadow hover:bg-green-700 transition disabled:opacity-60 cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-400"
     >
       {loading ? "Generando..." : "Exportar Excel"}
     </button>

@@ -39,7 +39,7 @@ export default function AlumnosPage() {
   // Cargar datos
   useEffect(() => {
     if (sectionId)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}`)
         .then(r => r.json())
         .then(setSection)
         .catch(() => setSection(null));
@@ -47,7 +47,7 @@ export default function AlumnosPage() {
 
   useEffect(() => {
     if (gradeId)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/grades/${gradeId}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/grades/${gradeId}`)
         .then(r => r.json())
         .then(setGrade)
         .catch(() => setGrade(null));
@@ -55,7 +55,7 @@ export default function AlumnosPage() {
 
   useEffect(() => {
     if (grade && grade.bimester_id)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/bimesters/${grade.bimester_id}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/bimesters/${grade.bimester_id}`)
         .then(r => r.json())
         .then(setBimester)
         .catch(() => setBimester(null));
@@ -64,7 +64,7 @@ export default function AlumnosPage() {
   // Lista alumnos
   const fetchStudents = () => {
     if (sectionId)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}/students`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}/students`)
         .then(r => r.json())
         .then(setStudents)
         .catch(() => setStudents([]));
@@ -76,7 +76,7 @@ export default function AlumnosPage() {
     e.preventDefault();
     if (!newName.trim() || adding) return;
     setAdding(true);
-    await fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}/students`, {
+    await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}/students`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ full_name: newName.trim() }),
@@ -95,7 +95,7 @@ export default function AlumnosPage() {
   const handleEditStudent = async () => {
     if (!studentToEdit || !editName.trim() || editing) return;
     setEditing(true);
-    await fetch(`https://backend-web-mom-3dmj.shuttle.app/students/${studentToEdit.id}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students/${studentToEdit.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ full_name: editName.trim() }),
@@ -114,7 +114,7 @@ export default function AlumnosPage() {
   const handleDeleteStudent = async () => {
     if (!studentToDelete || deleting) return;
     setDeleting(true);
-    await fetch(`https://backend-web-mom-3dmj.shuttle.app/students/${studentToDelete.id}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/students/${studentToDelete.id}`, {
       method: "DELETE",
     });
     setDeleting(false);
@@ -157,7 +157,7 @@ export default function AlumnosPage() {
           continue;
         }
         try {
-          const res = await fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}/students`, {
+          const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}/students`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ full_name }),
@@ -187,13 +187,13 @@ export default function AlumnosPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white py-8 px-4">
+    <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
       {/* Encabezado con contexto */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
+      <div className="w-full max-w-2xl mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700 mb-3 text-center sm:text-left">
           Alumnos de la Sección {section ? section.letter : "?"}
         </h1>
-        <div className="text-gray-700">
+        <div className="text-gray-700 text-lg text-center sm:text-left">
           {grade && (
             <span className="mr-4">
               Grado: <b>{grade.number}°</b>
@@ -208,9 +208,9 @@ export default function AlumnosPage() {
       </div>
 
       {/* Botón importar */}
-      <div className="mb-6">
+      <div className="w-full max-w-2xl mb-6 flex items-center">
         <button
-          className="bg-green-600 text-white rounded px-4 py-2 font-bold shadow hover:bg-green-700 transition cursor-pointer"
+          className="bg-green-600 text-white rounded-full px-6 py-2 font-semibold shadow hover:bg-green-700 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-400 active:scale-95"
           onClick={handleImportClick}
         >
           Importar desde archivo
@@ -219,13 +219,13 @@ export default function AlumnosPage() {
 
       {/* Modal de importación */}
       {importModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50" onClick={() => setImportModalOpen(false)}>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50" onClick={() => setImportModalOpen(false)}>
           <div
-            className="bg-white rounded-xl p-6 shadow-xl min-w-[350px] flex flex-col gap-4 max-w-[90vw]"
+            className="bg-white rounded-2xl p-8 shadow-2xl min-w-[350px] w-full max-w-xs flex flex-col gap-5 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-2 text-green-700">Importar alumnos desde archivo</h2>
-            <ol className="mb-2 text-gray-700 list-decimal pl-5">
+            <h2 className="text-2xl font-bold mb-2 text-green-700 text-center">Importar alumnos desde archivo</h2>
+            <ol className="mb-2 text-gray-700 list-decimal pl-5 text-base">
               <li>
                 Crea un archivo <b>CSV</b> con el siguiente formato:
                 <pre className="bg-gray-100 border border-gray-200 rounded my-2 p-2 text-xs">
@@ -261,7 +261,7 @@ export default function AlumnosPage() {
                   className={`w-full flex items-center justify-center gap-2 px-5 py-3 rounded-lg font-bold shadow-md transition cursor-pointer
         ${importing
                       ? "bg-gray-300 text-gray-500 cursor-wait"
-                      : "bg-green-100"
+                      : "bg-green-100 hover:bg-green-200"
                     }`}
                   disabled={importing}
                   onClick={() => fileInputRef.current?.click()}
@@ -309,10 +309,10 @@ export default function AlumnosPage() {
       )}
 
       {/* Formulario para agregar alumno */}
-      <form className="flex gap-2 items-center mb-6" onSubmit={handleAddStudent}>
+      <form className="flex gap-3 items-center mb-8 w-full max-w-2xl" onSubmit={handleAddStudent}>
         <input
           type="text"
-          className="border border-gray-300 rounded px-3 py-2 w-full max-w-sm"
+          className="border border-indigo-200 rounded-lg px-3 py-2 w-full max-w-sm focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
           placeholder="Nombre completo del alumno"
           value={newName}
           onChange={e => setNewName(e.target.value)}
@@ -320,7 +320,7 @@ export default function AlumnosPage() {
         />
         <button
           type="submit"
-          className="bg-blue-600 text-white rounded px-4 py-2 font-bold shadow hover:bg-blue-700 transition cursor-pointer"
+          className="bg-indigo-600 text-white rounded-full px-5 py-2 font-semibold shadow hover:bg-indigo-700 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400"
           disabled={!newName.trim() || adding}
         >
           Agregar
@@ -328,62 +328,65 @@ export default function AlumnosPage() {
       </form>
 
       {/* Lista de alumnos */}
-      {students.length === 0 ? (
-        <div className="text-gray-500">No hay alumnos registrados en esta sección.</div>
-      ) : (
-        <ul className="flex flex-col gap-2 max-w-xl">
-          {students.map(stu => (
-            <li
-              key={stu.id}
-              className="bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3 flex justify-between items-center"
-            >
-              <span className="font-semibold text-gray-800">{stu.full_name}</span>
-              <div className="flex gap-2">
-                <button
-                  className="px-2 py-1 rounded bg-yellow-200 hover:bg-yellow-300 text-yellow-900 font-bold cursor-pointer"
-                  onClick={() => openEditModal(stu)}
-                  title="Editar alumno"
-                >
-                  Editar
-                </button>
-                <button
-                  className="px-2 py-1 rounded bg-red-200 hover:bg-red-300 text-red-900 font-bold cursor-pointer"
-                  onClick={() => openDeleteModal(stu)}
-                  title="Eliminar alumno"
-                >
-                  Eliminar
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="w-full max-w-2xl">
+        {students.length === 0 ? (
+          <div className="text-gray-500 text-lg text-center py-8">No hay alumnos registrados en esta sección.</div>
+        ) : (
+          <ul className="flex flex-col gap-2">
+            {students.map(stu => (
+              <li
+                key={stu.id}
+                className="bg-white/90 border border-indigo-200 rounded-xl shadow-sm px-4 py-3 flex justify-between items-center"
+              >
+                <span className="font-semibold text-indigo-900">{stu.full_name}</span>
+                <div className="flex gap-2">
+                  <button
+                    className="px-3 py-1 rounded-lg bg-yellow-100 hover:bg-yellow-200 text-yellow-900 font-semibold shadow-sm transition"
+                    onClick={() => openEditModal(stu)}
+                    title="Editar alumno"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    className="px-3 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-900 font-semibold shadow-sm transition"
+                    onClick={() => openDeleteModal(stu)}
+                    title="Eliminar alumno"
+                  >
+                    Eliminar
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {/* Modal de edición */}
       {editModalOpen && studentToEdit && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50" onClick={() => setEditModalOpen(false)}>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50" onClick={() => setEditModalOpen(false)}>
           <div
-            className="bg-white rounded-xl p-6 shadow-xl min-w-[300px] flex flex-col gap-4"
+            className="bg-white rounded-2xl p-8 shadow-2xl min-w-[300px] w-full max-w-xs flex flex-col gap-5"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-2 text-yellow-700">Editar alumno</h2>
+            <h2 className="text-2xl font-bold mb-2 text-yellow-700 text-center">Editar alumno</h2>
             <input
               type="text"
-              className="border border-gray-300 rounded px-3 py-2 w-full"
+              className="border border-indigo-200 rounded-lg px-3 py-2 w-full focus:outline-none focus:ring-2 focus:ring-yellow-300 transition"
               value={editName}
               onChange={e => setEditName(e.target.value)}
               disabled={editing}
+              autoFocus
             />
-            <div className="flex gap-2 justify-end mt-4">
+            <div className="flex gap-3 justify-end mt-2">
               <button
-                className="px-4 py-2 rounded bg-gray-200 cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"
                 onClick={() => setEditModalOpen(false)}
                 disabled={editing}
               >
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded bg-yellow-600 text-white font-bold cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white font-bold transition disabled:bg-yellow-400"
                 onClick={handleEditStudent}
                 disabled={!editName.trim() || editing}
               >
@@ -396,25 +399,25 @@ export default function AlumnosPage() {
 
       {/* Modal de confirmación de eliminación */}
       {deleteModalOpen && studentToDelete && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50" onClick={() => setDeleteModalOpen(false)}>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50" onClick={() => setDeleteModalOpen(false)}>
           <div
-            className="bg-white rounded-xl p-6 shadow-xl min-w-[300px] flex flex-col gap-4"
+            className="bg-white rounded-2xl p-8 shadow-2xl min-w-[300px] w-full max-w-xs flex flex-col gap-5"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-2 text-red-700">Eliminar alumno</h2>
-            <div className="text-gray-800">
+            <h2 className="text-2xl font-bold mb-2 text-red-700 text-center">Eliminar alumno</h2>
+            <div className="text-lg text-gray-800 text-center">
               ¿Estás seguro de que deseas eliminar a <b>{studentToDelete.full_name}</b>?
             </div>
-            <div className="flex gap-2 justify-end mt-4">
+            <div className="flex gap-3 justify-end mt-2">
               <button
-                className="px-4 py-2 rounded bg-gray-200 cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"
                 onClick={() => setDeleteModalOpen(false)}
                 disabled={deleting}
               >
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded bg-red-600 text-white font-bold cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold transition disabled:bg-red-400"
                 onClick={handleDeleteStudent}
                 disabled={deleting}
               >

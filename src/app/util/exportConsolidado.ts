@@ -81,6 +81,7 @@ export async function exportConsolidadoExcel(
   const sheet: any[][] = Array.from({length: HEADER_ROWS}, () => []);
   const criterionByCol: Record<number, number> = {};
   const abilityObsCol: Record<number, number> = {};
+  const abilityAvgCol: Record<number, number> = {}; // NUEVO: columna promedio por capacidad
   const compAvgCols: number[] = [];
 
   sheet[0][0] = "N°";
@@ -94,9 +95,15 @@ export async function exportConsolidadoExcel(
 
   let col = 2;
 
+  interface AbilityBlock {
+    abilityId: number;
+    critCols: number[];
+    obsCol: number;
+    avgCol: number;
+  }
   interface CompetencyBlock {
     avgCol: number;
-    abilityBlocks: { abilityId: number; critCols: number[]; obsCol: number }[];
+    abilityBlocks: AbilityBlock[];
   }
   const competencyBlocks: CompetencyBlock[] = [];
 
@@ -106,7 +113,7 @@ export async function exportConsolidadoExcel(
     const compList = compsPorSesion[ses.id] || [];
     for (const comp of compList) {
       const compStart = col;
-      const abilityBlocks: CompetencyBlock["abilityBlocks"] = [];
+      const abilityBlocks: AbilityBlock[] = [];
       const abList = abilitiesPorComp[comp.id] || [];
 
       for (const ab of abList) {
@@ -138,7 +145,15 @@ export async function exportConsolidadoExcel(
         }
         col++;
 
-        abilityBlocks.push({ abilityId: ab.id, critCols, obsCol });
+        // NUEVO: columna promedio capacidad
+        const avgCol = col;
+        sheet[2][avgCol] = "PROMED CAP.";
+        sheet[3][avgCol] = "";
+        abilityAvgCol[avgCol] = ab.id;
+        merges.push({ s:{r:2,c:avgCol}, e:{r:3,c:avgCol} });
+        col++;
+
+        abilityBlocks.push({ abilityId: ab.id, critCols, obsCol, avgCol });
       }
 
       const avgCol = col;
@@ -172,6 +187,23 @@ export async function exportConsolidadoExcel(
       } else if (abilityObsCol[c] !== undefined) {
         const abId = abilityObsCol[c];
         row[c] = obsMap[`${st.id}-${abId}`] ? (mostrarIcono ? "📝" : "") : "";
+      } else if (abilityAvgCol[c] !== undefined) {
+        // Promedio por capacidad (vacío si no calcularPromedios)
+        if (calcularPromedios) {
+          const abId = abilityAvgCol[c];
+          const critCols = Object.entries(criterionByCol)
+            .filter(([, id]) => data.abilities.find(a => a.id === abId)?.id === abId)
+            .map(([colStr]) => parseInt(colStr));
+          const nums: number[] = [];
+          for (const k of critCols) {
+            const critId = criterionByCol[k];
+            const v = data.values.find(vv => vv.student_id === st.id && vv.criterion_id === critId);
+            if (v && escala[v.value] !== undefined) nums.push(escala[v.value]);
+          }
+          row[c] = nums.length ? (nums.reduce((a,b)=>a+b,0)/nums.length).toFixed(2) : "";
+        } else {
+          row[c] = "";
+        }
       } else if (compAvgCols.includes(c)) {
         if (calcularPromedios) {
           const block = competencyBlocks.find(b => b.avgCol === c);
@@ -254,6 +286,10 @@ export async function exportConsolidadoExcel(
   });
   Object.keys(abilityObsCol).forEach(cStr=>{
     setStyle(3,parseInt(cStr,10),{fill:colorObs,align:"center"});
+  });
+  Object.keys(abilityAvgCol).forEach(cStr=>{
+    setStyle(2,parseInt(cStr,10),{fill:"FFDEECF7",bold:true,align:"center",vertical:true});
+    setStyle(3,parseInt(cStr,10),{fill:"FFDEECF7",bold:true,align:"center",vertical:true});
   });
   for (let r=HEADER_ROWS;r<sheet.length;r++){
     for (let c=0;c<col;c++){

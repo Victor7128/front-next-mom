@@ -63,7 +63,7 @@ export default function SesionesPage() {
   // Cargar contexto
   useEffect(() => {
     if (sectionId)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}`)
         .then(r => r.json())
         .then(setSection)
         .catch(() => setSection(null));
@@ -71,7 +71,7 @@ export default function SesionesPage() {
 
   useEffect(() => {
     if (gradeId)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/grades/${gradeId}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/grades/${gradeId}`)
         .then(r => r.json())
         .then(setGrade)
         .catch(() => setGrade(null));
@@ -79,7 +79,7 @@ export default function SesionesPage() {
 
   useEffect(() => {
     if (grade && grade.bimester_id)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/bimesters/${grade.bimester_id}`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/bimesters/${grade.bimester_id}`)
         .then(r => r.json())
         .then(setBimester)
         .catch(() => setBimester(null));
@@ -88,7 +88,7 @@ export default function SesionesPage() {
   // Listar sesiones
   const fetchSessions = () => {
     if (sectionId)
-      fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}/sessions`)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}/sessions`)
         .then(r => r.json())
         .then(setSessions)
         .catch(() => setSessions([]));
@@ -114,7 +114,7 @@ export default function SesionesPage() {
     };
 
     try {
-      const res = await fetch(`https://backend-web-mom-3dmj.shuttle.app/sections/${sectionId}/sessions`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}/sessions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -143,7 +143,7 @@ export default function SesionesPage() {
   const handleDeleteSession = async () => {
     if (!sessionToDelete || deleting) return;
     setDeleting(true);
-    await fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionToDelete.id}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sessions/${sessionToDelete.id}`, {
       method: "DELETE",
     });
     setDeleting(false);
@@ -165,7 +165,7 @@ export default function SesionesPage() {
     setEditing(true);
     const title = editSessionTitle.trim();
     const date = editSessionDate || new Date().toISOString().slice(0, 10);
-    await fetch(`https://backend-web-mom-3dmj.shuttle.app/sessions/${sessionToEdit.id}`, {
+    await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sessions/${sessionToEdit.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title: title.length > 0 ? title : null, date }),
@@ -177,13 +177,13 @@ export default function SesionesPage() {
   };
 
   return (
-    <main className="min-h-screen bg-white py-8 px-4">
+    <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
       {/* Encabezado con contexto */}
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-gray-800 mb-2">
+      <div className="w-full max-w-2xl mb-8">
+        <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700 mb-3 text-center sm:text-left">
           Sesiones de la Sección {section ? section.letter : "?"}
         </h1>
-        <div className="text-gray-700">
+        <div className="text-gray-700 text-lg text-center sm:text-left">
           {grade && (
             <span className="mr-4">
               Grado: <b>{grade.number}°</b>
@@ -198,141 +198,147 @@ export default function SesionesPage() {
       </div>
 
       {/* Botón crear sesión */}
-      <button
-        className="bg-blue-600 text-white rounded-full px-4 py-2 text-lg font-bold mb-6 shadow hover:bg-blue-700 transition cursor-pointer"
-        onClick={handleOpenCreateModal}
-        disabled={creating}
-      >
-        + Nueva sesión
-      </button>
+      <div className="w-full max-w-2xl flex items-center mb-8">
+        <button
+          className="bg-indigo-600 text-white rounded-full px-6 py-2 text-lg font-semibold shadow hover:bg-indigo-700 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400 active:scale-95"
+          onClick={handleOpenCreateModal}
+          disabled={creating}
+        >
+          + Nueva sesión
+        </button>
+      </div>
 
       {/* Lista de sesiones */}
-      {sessions.length === 0 ? (
-        <div className="text-gray-500">No hay sesiones registradas en esta sección.</div>
-      ) : (
-        <ul className="flex flex-col gap-2 max-w-xl">
-          {sessions.map(sess => (
-            <li key={sess.id} className="relative group">
-              <Link
-                href={`/grado/${bimesterId}/secciones/${gradeId}/${sectionId}/sesiones/${sess.id}`}
-                className="bg-white border border-gray-200 rounded-lg shadow-sm px-4 py-3 flex justify-between items-center cursor-pointer transition hover:scale-[1.02] hover:shadow-md no-underline"
-                title={`Ver sesión ${sess.number}`}
-              >
-                <div>
-                  <span className="text-gray-800 text-lg font-semibold">{sess.title || `Sesión ${sess.number}`}</span>
-                  <span className="ml-3 text-sm text-gray-500">{sess.date ? `Fecha: ${sess.date.slice(0, 10)}` : ""}</span>
-                </div>
-                <div className="flex gap-1">
-                  <button
-                    className="p-2 rounded-full bg-white hover:bg-yellow-100 text-gray-500 hover:text-yellow-700 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-yellow-500 z-10"
-                    title="Editar sesión"
-                    onClick={e => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      openEditModal(sess);
-                    }}
-                  >
-                    <EditIcon />
-                  </button>
-                  <button
-                    className="p-2 rounded-full bg-white hover:bg-red-100 text-gray-500 hover:text-red-600 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 z-10"
-                    title="Eliminar sesión"
-                    onClick={e => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      openDeleteModal(sess);
-                    }}
-                  >
-                    <TrashIcon />
-                  </button>
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
+      <div className="w-full max-w-2xl">
+        {sessions.length === 0 ? (
+          <div className="text-gray-500 text-lg text-center py-8">No hay sesiones registradas en esta sección.</div>
+        ) : (
+          <ul className="flex flex-col gap-3">
+            {sessions.map(sess => (
+              <li key={sess.id} className="relative group">
+                <Link
+                  href={`/grado/${bimesterId}/secciones/${gradeId}/${sectionId}/sesiones/${sess.id}`}
+                  className="bg-white/90 border border-indigo-200 rounded-2xl shadow-sm px-6 py-5 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 transition-all hover:shadow-lg hover:bg-indigo-50 hover:border-indigo-400 cursor-pointer no-underline"
+                  title={`Ver sesión ${sess.number}`}
+                >
+                  <div className="flex flex-col">
+                    <span className="text-indigo-900 text-lg font-semibold">{sess.title || `Sesión ${sess.number}`}</span>
+                    <span className="text-sm text-gray-500">{sess.date ? `Fecha: ${sess.date.slice(0, 10)}` : ""}</span>
+                  </div>
+                  <div className="flex gap-2 mt-2 sm:mt-0">
+                    <button
+                      className="p-2 rounded-full bg-white hover:bg-yellow-100 text-gray-500 hover:text-yellow-700 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-yellow-500 z-10"
+                      title="Editar sesión"
+                      onClick={e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openEditModal(sess);
+                      }}
+                    >
+                      <EditIcon />
+                    </button>
+                    <button
+                      className="p-2 rounded-full bg-white hover:bg-red-100 text-gray-500 hover:text-red-600 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 z-10"
+                      title="Eliminar sesión"
+                      onClick={e => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        openDeleteModal(sess);
+                      }}
+                    >
+                      <TrashIcon />
+                    </button>
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {/* Modal para crear sesión */}
       {createModalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50" onClick={() => setCreateModalOpen(false)}>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50" onClick={() => setCreateModalOpen(false)}>
           <div
-            className="bg-white rounded-xl p-6 shadow-xl min-w-[320px] flex flex-col gap-4"
+            className="bg-white rounded-2xl p-8 shadow-2xl min-w-[320px] w-full max-w-xs flex flex-col gap-5 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-2">Nueva sesión</h2>
+            <h2 className="text-2xl font-bold mb-2 text-indigo-700 text-center">Nueva sesión</h2>
             <label className="text-gray-700 font-semibold">Nombre de la sesión:</label>
             <input
               type="text"
               value={newSessionTitle}
               onChange={e => setNewSessionTitle(e.target.value)}
-              className="border rounded px-3 py-2 mb-2"
+              className="border border-indigo-200 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
               placeholder="Escribe el nombre (opcional)"
               disabled={creating}
+              autoFocus
             />
             <label className="text-gray-700 font-semibold">Fecha:</label>
             <input
               type="date"
               value={newSessionDate}
               onChange={e => setNewSessionDate(e.target.value)}
-              className="border rounded px-3 py-2 mb-2"
+              className="border border-indigo-200 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
               disabled={creating}
             />
-            <div className="flex gap-2 mt-2 justify-end">
+            <div className="flex gap-3 mt-2 justify-end">
               <button
-                className="px-4 py-2 rounded bg-gray-200 cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"
                 onClick={() => setCreateModalOpen(false)}
                 disabled={creating}
               >
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded bg-blue-600 text-white font-bold cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition disabled:bg-indigo-400"
                 onClick={handleCreateSession}
                 disabled={creating}
               >
                 Crear sesión
               </button>
             </div>
-            <span className="text-xs text-gray-500">Si dejas el nombre vacío, se asignará automáticamente (Ej. "Sesión 1")</span>
+            <span className="text-xs text-gray-500 text-center">Si dejas el nombre vacío, se asignará automáticamente (Ej. "Sesión 1")</span>
           </div>
         </div>
       )}
 
       {/* Modal de edición de sesión */}
       {editModalOpen && sessionToEdit && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50" onClick={() => setEditModalOpen(false)}>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50" onClick={() => setEditModalOpen(false)}>
           <div
-            className="bg-white rounded-xl p-6 shadow-xl min-w-[320px] flex flex-col gap-4"
+            className="bg-white rounded-2xl p-8 shadow-2xl min-w-[320px] w-full max-w-xs flex flex-col gap-5 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-2">Editar sesión</h2>
+            <h2 className="text-2xl font-bold mb-2 text-yellow-700 text-center">Editar sesión</h2>
             <label className="text-gray-700 font-semibold">Nombre de la sesión:</label>
             <input
               type="text"
               value={editSessionTitle}
               onChange={e => setEditSessionTitle(e.target.value)}
-              className="border rounded px-3 py-2 mb-2"
+              className="border border-yellow-200 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-yellow-300 transition"
               placeholder="Escribe el nombre"
               disabled={editing}
+              autoFocus
             />
             <label className="text-gray-700 font-semibold">Fecha:</label>
             <input
               type="date"
               value={editSessionDate}
               onChange={e => setEditSessionDate(e.target.value)}
-              className="border rounded px-3 py-2 mb-2"
+              className="border border-yellow-200 rounded-lg px-3 py-2 mb-2 focus:outline-none focus:ring-2 focus:ring-yellow-300 transition"
               disabled={editing}
             />
-            <div className="flex gap-2 mt-2 justify-end">
+            <div className="flex gap-3 mt-2 justify-end">
               <button
-                className="px-4 py-2 rounded bg-gray-200 cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"
                 onClick={() => setEditModalOpen(false)}
                 disabled={editing}
               >
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded bg-blue-600 text-white font-bold cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-yellow-600 hover:bg-yellow-700 text-white font-bold transition disabled:bg-yellow-400"
                 onClick={handleEditSession}
                 disabled={editing}
               >
@@ -345,29 +351,29 @@ export default function SesionesPage() {
 
       {/* Modal de confirmación para eliminar sesión */}
       {deleteModalOpen && sessionToDelete && (
-        <div className="fixed inset-0 flex items-center justify-center bg-black/30 z-50" onClick={() => setDeleteModalOpen(false)}>
+        <div className="fixed inset-0 flex items-center justify-center bg-black/40 z-50" onClick={() => setDeleteModalOpen(false)}>
           <div
-            className="bg-white rounded-xl p-6 shadow-xl min-w-[320px] flex flex-col gap-4"
+            className="bg-white rounded-2xl p-8 shadow-2xl min-w-[320px] w-full max-w-xs flex flex-col gap-5 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-xl font-bold mb-2 text-red-700">Eliminar sesión</h2>
-            <div className="text-gray-800">
+            <h2 className="text-2xl font-bold mb-2 text-red-700 text-center">Eliminar sesión</h2>
+            <div className="text-gray-800 text-center">
               ¿Estás seguro de que deseas eliminar la sesión <b>{sessionToDelete.title || `Sesión ${sessionToDelete.number}`}</b>?
               <br />
-              <span className="text-red-600">
+              <span className="text-red-600 text-sm block mt-2">
                 Esto puede eliminar toda la información asociada a esta sesión (competencias, criterios y evaluaciones).
               </span>
             </div>
-            <div className="flex gap-2 mt-4 justify-end">
+            <div className="flex gap-3 mt-4 justify-end">
               <button
-                className="px-4 py-2 rounded bg-gray-200 cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"
                 onClick={() => setDeleteModalOpen(false)}
                 disabled={deleting}
               >
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded bg-red-600 text-white font-bold cursor-pointer"
+                className="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-bold transition disabled:bg-red-400"
                 onClick={handleDeleteSession}
                 disabled={deleting}
               >
