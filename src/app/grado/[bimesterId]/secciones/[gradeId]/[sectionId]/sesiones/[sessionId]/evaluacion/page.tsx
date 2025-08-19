@@ -140,7 +140,7 @@ export default function EvaluacionPage() {
     student_id: number,
     ability_id: number,
     criterion_id: number,
-    value: EvalValue
+    value: EvalValue | ""
   ) => {
     setLocalValues(prev => ({
       ...prev,
@@ -175,45 +175,64 @@ export default function EvaluacionPage() {
     setObsModalOpen(false);
   };
 
-  // Guardar TODO
+  // Guardar TODO (solo cambia si el valor cambió)
   const handleSaveAll = async () => {
     if (!context || context.locked) return;
     setSaving(true);
     setModalMsg(null);
     const product = context.product;
-    const promises: Promise<any>[] = [];
+    const updatePromises: Promise<Response>[] = [];
+
+    // Solo guarda si hay cambios respecto a los datos originales
     context.students.forEach(st => {
       context.abilities.forEach(ability => {
         const criteria = context.criteria.filter(c => c.ability_id === ability.id);
         criteria.forEach(cr => {
-          const value = localValues[st.id]?.[ability.id]?.[cr.id] ?? "";
-          promises.push(
-            fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/evaluation/value`, {
-              method: "PUT",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                session_id: Number(sessionId),
-                competency_id: context.competency.id,
-                ability_id: ability.id,
-                criterion_id: cr.id,
-                product_id: product.id,
-                student_id: st.id,
-                value,
-                observation: localObs[st.id]?.[ability.id] || null,
-              }),
-            })
+          const originalValue = context.values.find(
+            v => v.student_id === st.id && v.ability_id === ability.id && v.criterion_id === cr.id
           );
+          const currentValue = localValues[st.id]?.[ability.id]?.[cr.id] ?? "";
+          const currentObs = localObs[st.id]?.[ability.id] || "";
+          const originalObs = originalValue?.observation || "";
+
+          // Solo guardar si la nota o la obs cambiaron
+          // --- SOLO hacer PUT si hay valor (nota) ---
+          if (
+            currentValue !== "" &&
+            (currentValue !== (originalValue?.value ?? "") ||
+            currentObs !== originalObs)
+          ) {
+            updatePromises.push(
+              fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/evaluation/value`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  session_id: Number(sessionId),
+                  competency_id: context.competency.id,
+                  ability_id: ability.id,
+                  criterion_id: cr.id,
+                  product_id: product.id,
+                  student_id: st.id,
+                  value: currentValue,
+                  observation: currentObs || null,
+                }),
+              })
+            );
+          }
         });
       });
     });
 
-    const results = await Promise.allSettled(promises);
+    let hasError = false;
+    if (updatePromises.length > 0) {
+      const results = await Promise.allSettled(updatePromises);
 
-    const hasError = results.some(
-      (res) =>
-        res.status === "rejected" ||
-        (res.status === "fulfilled" && "ok" in res.value && !res.value.ok)
-    );
+      hasError = results.some(
+        (res) =>
+          res.status !== "fulfilled" ||
+          (res.status === "fulfilled" && res.value && !res.value.ok)
+      );
+    }
 
     setSaving(false);
 
@@ -221,7 +240,7 @@ export default function EvaluacionPage() {
       setModalMsg("Error al guardar los cambios.");
     } else {
       setModalMsg("Los cambios se guardaron correctamente.");
-      // Opcional: recarga del backend
+      // Recarga datos
       fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/evaluation/context?session_id=${sessionId}&product_id=${product.id}&competency_id=${context.competency.id}`
       )
@@ -243,7 +262,6 @@ export default function EvaluacionPage() {
 
   // Agrupación de columnas por capacidad
   function getCapacityTableHeaders(abilities: Ability[], criteria: Criterion[]) {
-    // Nivel 1: capacidad (colSpan = criterios + 1 observación)
     const abilityGroups = abilities.map(ability => {
       const numCriterios = criteria.filter(c => c.ability_id === ability.id).length;
       return {
@@ -252,7 +270,6 @@ export default function EvaluacionPage() {
         colSpan: numCriterios + 1,
       };
     });
-    // Nivel 2: criterios + observación
     const criteriaHeaders = abilities.flatMap(ability => {
       const crs = criteria.filter(c => c.ability_id === ability.id);
       return [
@@ -266,6 +283,10 @@ export default function EvaluacionPage() {
     });
     return { abilityGroups, criteriaHeaders };
   }
+
+  // Sticky heights for mobile/desktop
+  const HEADER1_HEIGHT = 36; // px, ajusta si tu header es más alto
+  const HEADER2_HEIGHT = 34; // px, ajusta si tu header2 es más alto
 
   if (fetchError) {
     return (
@@ -383,101 +404,126 @@ export default function EvaluacionPage() {
       {context && (
         <div className="w-full overflow-x-auto rounded-xl border bg-white/90">
           <div className="min-w-[650px] md:min-w-full">
-          {(() => {
-            const { abilityGroups, criteriaHeaders } = getCapacityTableHeaders(context.abilities, context.criteria);
-            return (
-              <table className="border-collapse w-full text-[11px] md:text-sm">
-                <thead>
-                  <tr>
-                    <th
-                      className="border font-bold bg-gray-200 text-center sticky left-0 z-10"
-                      rowSpan={2}
-                      style={{ minWidth: 80, maxWidth: 160, width: "25%", background: "#f1f5f9" }}
-                    >
-                      APELLIDOS Y NOMBRES
-                    </th>
-                    {abilityGroups.map(grp => (
+            {(() => {
+              const { abilityGroups, criteriaHeaders } = getCapacityTableHeaders(context.abilities, context.criteria);
+              return (
+                <table className="border-collapse w-full text-[11px] md:text-sm">
+                  <thead>
+                    <tr>
                       <th
-                        key={grp.id}
-                        className="border font-bold bg-gray-100 text-center"
-                        colSpan={grp.colSpan}
+                        className="border font-bold bg-gray-200 text-center sticky left-0 top-0 z-30"
+                        rowSpan={2}
+                        style={{
+                          minWidth: 80,
+                          maxWidth: 160,
+                          width: "25%",
+                          background: "#f1f5f9",
+                          zIndex: 30,
+                          top: 0,
+                        }}
                       >
-                        {grp.display_name}
+                        APELLIDOS Y NOMBRES
                       </th>
-                    ))}
-                  </tr>
-                  <tr>
-                    {criteriaHeaders.map(h => (
-                      <th
-                        key={`${h.abilityId}_${h.id}`}
-                        className={`border font-bold text-center ${typeof h.id === "string" && h.id.startsWith("obs_") ? "bg-yellow-50" : "bg-gray-50"}`}
-                        style={typeof h.id === "string" && h.id.startsWith("obs_") ? { minWidth: 24, fontWeight: 700 } : { minWidth: 24 }}
-                      >
-                        {h.label}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {context.students.map((st, idx) => (
-                    <tr key={st.id} className="odd:bg-white even:bg-gray-50">
-                      <td
-                        className="border text-black font-medium sticky left-0 z-10 bg-gray-200"
-                        style={{ minWidth: 140, background: "#f1f5f9" }}
-                      >
-                        {st.full_name}
-                      </td>
-                      {context.abilities.map(ability => (
-                        <Fragment key={ability.id}>
-                          {context.criteria
-                            .filter(c => c.ability_id === ability.id)
-                            .map(cr => (
-                              <td key={`v_${st.id}_${ability.id}_${cr.id}`} className="border text-center min-w-[28px] px-0">
-                                <div className="flex flex-row gap-1 md:gap-0 justify-center items-center">
-                                  {["AD", "A", "B", "C"].map(level => (
-                                    <label key={level} className="mx-0.5 text-[10px] md:text-xs font-semibold text-indigo-700 whitespace-nowrap">
-                                      <input
-                                        type="radio"
-                                        name={`eval_${st.id}_${ability.id}_${cr.id}`}
-                                        checked={localValues[st.id]?.[ability.id]?.[cr.id] === level}
-                                        disabled={saving || context.locked}
-                                        onChange={() =>
-                                          handleLocalChange(st.id, ability.id, cr.id, level as EvalValue)
-                                        }
-                                        className="cursor-pointer accent-indigo-600"
-                                      />{" "}
-                                      {level}
-                                    </label>
-                                  ))}
-                                </div>
-                              </td>
-                            ))}
-                          <td
-                            key={`obs_${st.id}_${ability.id}`}
-                            className="border text-center min-w-[30px] px-0"
-                            style={{
-                              background: localObs[st.id]?.[ability.id]?.trim() ? "#FFF9C4" : "#FEFCE8",
-                            }}
-                          >
-                            <button
-                              className={`px-2 py-1 rounded-lg font-semibold ${localObs[st.id]?.[ability.id]?.trim() ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200" : "bg-gray-100 text-gray-700 hover:bg-gray-200"} transition text-xs`}
-                              type="button"
-                              disabled={saving || context.locked}
-                              onClick={() => openObsModal(st.id, ability.id)}
-                            >
-                              {localObs[st.id]?.[ability.id]?.trim()
-                                ? "📝"
-                                : "+"}
-                            </button>
-                          </td>
-                        </Fragment>
+                      {abilityGroups.map(grp => (
+                        <th
+                          key={grp.id}
+                          className="border font-bold bg-gray-100 text-center sticky top-0 z-20"
+                          colSpan={grp.colSpan}
+                          style={{
+                            background: "#f3f4f6",
+                            zIndex: 20,
+                            top: 0,
+                          }}
+                        >
+                          {grp.display_name}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            );
-          })()}
+                    <tr>
+                      {criteriaHeaders.map(h => (
+                        <th
+                          key={`${h.abilityId}_${h.id}`}
+                          className={`border font-bold text-center sticky z-20 ${typeof h.id === "string" && h.id.startsWith("obs_") ? "bg-yellow-50" : "bg-gray-50"}`}
+                          style={{
+                            minWidth: 24,
+                            fontWeight: typeof h.id === "string" && h.id.startsWith("obs_") ? 700 : undefined,
+                            top: HEADER1_HEIGHT,
+                            zIndex: 20,
+                          }}
+                        >
+                          {h.label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {context.students.map((st, idx) => (
+                      <tr key={st.id} className="odd:bg-white even:bg-gray-50">
+                        <td
+                          className="border text-black font-medium sticky left-0 z-10 bg-gray-200"
+                          style={{
+                            minWidth: 140,
+                            background: "#f1f5f9",
+                            zIndex: 10,
+                            left: 0,
+                          }}
+                        >
+                          {st.full_name}
+                        </td>
+                        {context.abilities.map(ability => (
+                          <Fragment key={ability.id}>
+                            {context.criteria
+                              .filter(c => c.ability_id === ability.id)
+                              .map(cr => {
+                                const currentValue = localValues[st.id]?.[ability.id]?.[cr.id] || "";
+                                return (
+                                  <td key={`v_${st.id}_${ability.id}_${cr.id}`} className="border text-center min-w-[28px] px-0">
+                                    <div className="flex flex-row gap-1 justify-center items-center">
+                                      {["AD", "A", "B", "C"].map(level => (
+                                        <label key={level} className="mx-0.5 text-[10px] md:text-xs font-semibold text-indigo-700 whitespace-nowrap">
+                                          <input
+                                            type="radio"
+                                            name={`eval_${st.id}_${ability.id}_${cr.id}`}
+                                            checked={currentValue === level}
+                                            disabled={saving || context.locked}
+                                            onChange={() =>
+                                              handleLocalChange(st.id, ability.id, cr.id, level as EvalValue)
+                                            }
+                                            className="cursor-pointer accent-indigo-600"
+                                          />{" "}
+                                          {level}
+                                        </label>
+                                      ))}
+                                    </div>
+                                  </td>
+                                );
+                              })}
+                            <td
+                              key={`obs_${st.id}_${ability.id}`}
+                              className="border text-center min-w-[30px] px-0"
+                              style={{
+                                background: localObs[st.id]?.[ability.id]?.trim() ? "#FFF9C4" : "#FEFCE8",
+                              }}
+                            >
+                              <button
+                                className={`px-2 py-1 rounded-lg font-semibold ${localObs[st.id]?.[ability.id]?.trim() ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200" : "bg-gray-100 text-gray-700 hover:bg-gray-200"} transition text-xs`}
+                                type="button"
+                                disabled={saving || context.locked}
+                                onClick={() => openObsModal(st.id, ability.id)}
+                              >
+                                {localObs[st.id]?.[ability.id]?.trim()
+                                  ? "📝"
+                                  : "+"}
+                              </button>
+                            </td>
+                          </Fragment>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              );
+            })()}
           </div>
         </div>
       )}
