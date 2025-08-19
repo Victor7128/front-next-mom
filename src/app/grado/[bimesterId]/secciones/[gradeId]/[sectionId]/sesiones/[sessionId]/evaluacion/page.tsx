@@ -433,7 +433,7 @@ export default function EvaluacionPage() {
                             .filter(c => c.ability_id === ability.id)
                             .map(cr => (
                               <td key={`v_${st.id}_${ability.id}_${cr.id}`} className="border text-center min-w-[28px] px-0">
-                                <div className="flex flex-col md:flex-row gap-1 md:gap-0 justify-center items-center">
+                                <div className="flex flex-row gap-1 md:gap-0 justify-center items-center">
                                   {["AD", "A", "B", "C"].map(level => (
                                     <label key={level} className="mx-0.5 text-[10px] md:text-xs font-semibold text-indigo-700 whitespace-nowrap">
                                       <input
