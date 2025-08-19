@@ -147,7 +147,7 @@ export async function exportConsolidadoExcel(
 
         // NUEVO: columna promedio capacidad
         const avgCol = col;
-        sheet[2][avgCol] = "PROMED CAP.";
+        sheet[2][avgCol] = "PROM";
         sheet[3][avgCol] = "";
         abilityAvgCol[avgCol] = ab.id;
         merges.push({ s:{r:2,c:avgCol}, e:{r:3,c:avgCol} });
@@ -157,7 +157,7 @@ export async function exportConsolidadoExcel(
       }
 
       const avgCol = col;
-      sheet[2][avgCol] = "PROMED";
+      sheet[2][avgCol] = "PROMEDIO";
       sheet[3][avgCol] = "";
       compAvgCols.push(avgCol);
       merges.push({ s:{r:2,c:avgCol}, e:{r:3,c:avgCol} });
@@ -307,7 +307,7 @@ export async function exportConsolidadoExcel(
   let wsObs: XLSX.WorkSheet | null = null;
   const obsKeyToRow: Record<string, number> = {};
   if (hojaObservaciones) {
-    const obsRows: any[][] = [["Alumno","Habilidad","Observación"]];
+    const obsRows: any[][] = [["Alumno","Capacidad","Observación"]];
     data.observations
       .filter(o => !!o.observation)
       .sort((a,b)=>{

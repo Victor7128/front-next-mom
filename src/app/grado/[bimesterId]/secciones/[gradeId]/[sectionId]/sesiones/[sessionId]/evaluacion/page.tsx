@@ -1,6 +1,6 @@
 "use client";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Fragment } from "react";
 import { ModalAutoClose } from "@/app/components/ModalAutoclose";
 
 // Tipos para los datos
@@ -27,13 +27,19 @@ type EvaluationContextResponse = {
   students: Student[];
   values: ValueItem[];
 };
+
 type LocalValue = {
   [studentId: number]: {
-    [criterionId: number]: EvalValue | "";
-  };
+    [abilityId: number]: {
+      [criterionId: number]: EvalValue | "";
+    }
+  }
 };
+
 type LocalObs = {
-  [studentId: number]: string;
+  [studentId: number]: {
+    [abilityId: number]: string;
+  }
 };
 
 export default function EvaluacionPage() {
@@ -46,8 +52,7 @@ export default function EvaluacionPage() {
   const [selectedProductId, setSelectedProductId] = useState<number | null>(null);
 
   const [context, setContext] = useState<EvaluationContextResponse | null>(null);
-  const [abilities, setAbilities] = useState<Ability[]>([]);
-  const [selectedAbilityId, setSelectedAbilityId] = useState<number | null>(null);
+
   const [localValues, setLocalValues] = useState<LocalValue>({});
   const [localObs, setLocalObs] = useState<LocalObs>({});
   const [saving, setSaving] = useState(false);
@@ -56,13 +61,11 @@ export default function EvaluacionPage() {
 
   // Modal de observación
   const [obsModalOpen, setObsModalOpen] = useState(false);
+  const [obsAbilityId, setObsAbilityId] = useState<number | null>(null);
   const [obsStudentId, setObsStudentId] = useState<number | null>(null);
   const [obsInput, setObsInput] = useState("");
 
-  // --- NUEVO: Estado para bloquear/desbloquear
-  const [lockLoading, setLockLoading] = useState(false);
-
-  // Al cargar, obtener competencias y productos disponibles para la sesión
+  // Inicialización de combos
   useEffect(() => {
     setFetchError(null);
     if (!sessionId) {
@@ -86,13 +89,10 @@ export default function EvaluacionPage() {
       .catch(() => setFetchError("Error al cargar productos."));
   }, [sessionId]);
 
+  // Cargar contexto y valores iniciales
   useEffect(() => {
     setContext(null);
-    setAbilities([]);
-    setSelectedAbilityId(null);
-    if (!sessionId || !selectedCompetencyId || !selectedProductId) {
-      return;
-    }
+    if (!sessionId || !selectedCompetencyId || !selectedProductId) return;
     fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/evaluation/context?session_id=${sessionId}&product_id=${selectedProductId}&competency_id=${selectedCompetencyId}`)
       .then(async r => {
         if (!r.ok) throw new Error(await r.text());
@@ -100,80 +100,110 @@ export default function EvaluacionPage() {
       })
       .then((data: EvaluationContextResponse) => {
         setContext(data);
-        setAbilities(data.abilities || []);
-        if (data.abilities && data.abilities.length > 0) {
-          setSelectedAbilityId(data.abilities[0].id);
-        }
+        setLocalValues(prev => {
+          const newVals: LocalValue = { ...prev };
+          data.students.forEach(st => {
+            if (!newVals[st.id]) newVals[st.id] = {};
+            data.abilities.forEach(ability => {
+              if (!newVals[st.id][ability.id]) newVals[st.id][ability.id] = {};
+              data.criteria
+                .filter(cr => cr.ability_id === ability.id)
+                .forEach(cr => {
+                  const found = data.values.find(
+                    v => v.student_id === st.id && v.ability_id === ability.id && v.criterion_id === cr.id
+                  );
+                  newVals[st.id][ability.id][cr.id] = found ? (found.value as EvalValue) : "";
+                });
+            });
+          });
+          return newVals;
+        });
+        setLocalObs(prev => {
+          const newObs: LocalObs = { ...prev };
+          data.students.forEach(st => {
+            if (!newObs[st.id]) newObs[st.id] = {};
+            data.abilities.forEach(ability => {
+              const found = data.values.find(
+                v => v.student_id === st.id && v.ability_id === ability.id
+              );
+              newObs[st.id][ability.id] = found?.observation || "";
+            });
+          });
+          return newObs;
+        });
       })
       .catch(e => setFetchError(typeof e === "string" ? e : e.message));
   }, [sessionId, selectedCompetencyId, selectedProductId]);
 
-  useEffect(() => {
-    if (!selectedAbilityId || !context) return;
-    const criteria = context.criteria.filter((c) => c.ability_id === selectedAbilityId);
-    const values = context.values.filter((v) => v.ability_id === selectedAbilityId);
-
-    const lv: LocalValue = {};
-    const lo: LocalObs = {};
-
-    context.students.forEach((st) => {
-      lv[st.id] = {};
-      criteria.forEach((cr) => {
-        const valObj = values.find(
-          (v) => v.student_id === st.id && v.criterion_id === cr.id
-        );
-        lv[st.id][cr.id] = valObj ? (valObj.value as EvalValue) : "";
-        const obsVal = values.find((v) => v.student_id === st.id && v.ability_id === selectedAbilityId);
-        lo[st.id] = obsVal && obsVal.observation ? obsVal.observation : "";
-      });
-    });
-
-    setLocalValues(lv);
-    setLocalObs(lo);
-  }, [selectedAbilityId, context]);
-
+  // Cambiar valor local
   const handleLocalChange = (
     student_id: number,
+    ability_id: number,
     criterion_id: number,
     value: EvalValue
   ) => {
-    setLocalValues((prev) => ({
+    setLocalValues(prev => ({
       ...prev,
       [student_id]: {
         ...prev[student_id],
-        [criterion_id]: value,
+        [ability_id]: {
+          ...prev[student_id]?.[ability_id],
+          [criterion_id]: value,
+        },
       },
     }));
   };
 
-  const handleSave = async () => {
-    if (!context || !selectedAbilityId || context.locked) return;
+  // Observaciones
+  const openObsModal = (studentId: number, abilityId: number) => {
+    setObsStudentId(studentId);
+    setObsAbilityId(abilityId);
+    setObsInput(localObs[studentId]?.[abilityId] ?? "");
+    setObsModalOpen(true);
+  };
+  const closeObsModal = () => setObsModalOpen(false);
+  const handleSaveObs = () => {
+    if (obsStudentId !== null && obsAbilityId !== null) {
+      setLocalObs(prev => ({
+        ...prev,
+        [obsStudentId]: {
+          ...prev[obsStudentId],
+          [obsAbilityId]: obsInput,
+        },
+      }));
+    }
+    setObsModalOpen(false);
+  };
+
+  // Guardar TODO
+  const handleSaveAll = async () => {
+    if (!context || context.locked) return;
     setSaving(true);
     setModalMsg(null);
-
-    const criteria = context.criteria.filter((c) => c.ability_id === selectedAbilityId);
     const product = context.product;
     const promises: Promise<any>[] = [];
-
-    context.students.forEach((st) => {
-      criteria.forEach((cr) => {
-        const value = localValues[st.id]?.[cr.id] ?? "";
-        promises.push(
-          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/evaluation/value`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              session_id: Number(sessionId),
-              competency_id: context.competency.id,
-              ability_id: selectedAbilityId,
-              criterion_id: cr.id,
-              product_id: product.id,
-              student_id: st.id,
-              value,
-              observation: localObs[st.id] || null,
-            }),
-          })
-        );
+    context.students.forEach(st => {
+      context.abilities.forEach(ability => {
+        const criteria = context.criteria.filter(c => c.ability_id === ability.id);
+        criteria.forEach(cr => {
+          const value = localValues[st.id]?.[ability.id]?.[cr.id] ?? "";
+          promises.push(
+            fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/evaluation/value`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                session_id: Number(sessionId),
+                competency_id: context.competency.id,
+                ability_id: ability.id,
+                criterion_id: cr.id,
+                product_id: product.id,
+                student_id: st.id,
+                value,
+                observation: localObs[st.id]?.[ability.id] || null,
+              }),
+            })
+          );
+        });
       });
     });
 
@@ -191,6 +221,7 @@ export default function EvaluacionPage() {
       setModalMsg("Error al guardar los cambios.");
     } else {
       setModalMsg("Los cambios se guardaron correctamente.");
+      // Opcional: recarga del backend
       fetch(
         `${process.env.NEXT_PUBLIC_BACKEND_URL}/evaluation/context?session_id=${sessionId}&product_id=${product.id}&competency_id=${context.competency.id}`
       )
@@ -210,22 +241,35 @@ export default function EvaluacionPage() {
     }
   };
 
-  const openObsModal = (studentId: number) => {
-    setObsStudentId(studentId);
-    setObsInput(localObs[studentId] || "");
-    setObsModalOpen(true);
-  };
-  const closeObsModal = () => setObsModalOpen(false);
-  const handleSaveObs = () => {
-    if (obsStudentId !== null) {
-      setLocalObs((prev) => ({ ...prev, [obsStudentId]: obsInput }));
-    }
-    setObsModalOpen(false);
-  };
+  // Agrupación de columnas por capacidad
+  function getCapacityTableHeaders(abilities: Ability[], criteria: Criterion[]) {
+    // Nivel 1: capacidad (colSpan = criterios + 1 observación)
+    const abilityGroups = abilities.map(ability => {
+      const numCriterios = criteria.filter(c => c.ability_id === ability.id).length;
+      return {
+        id: ability.id,
+        display_name: ability.display_name,
+        colSpan: numCriterios + 1,
+      };
+    });
+    // Nivel 2: criterios + observación
+    const criteriaHeaders = abilities.flatMap(ability => {
+      const crs = criteria.filter(c => c.ability_id === ability.id);
+      return [
+        ...crs.map(cr => ({
+          id: cr.id,
+          label: cr.display_name,
+          abilityId: ability.id,
+        })),
+        { id: `obs_${ability.id}`, label: "📝", abilityId: ability.id },
+      ];
+    });
+    return { abilityGroups, criteriaHeaders };
+  }
 
   if (fetchError) {
     return (
-      <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
+      <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-2 py-6">
         <div className="text-red-700 font-bold mb-4">{fetchError}</div>
         <div className="text-gray-500">
           Verifica que la URL tenga <b>sessionId</b> o que los elementos existan en la sesión.
@@ -234,37 +278,40 @@ export default function EvaluacionPage() {
     );
   }
   return (
-    <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
+    <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-2 py-6">
       {modalMsg && (
         <ModalAutoClose
           message={modalMsg}
           onClose={() => setModalMsg(null)}
         />
       )}
-      {obsModalOpen && obsStudentId !== null && context && (
+
+      {obsModalOpen && obsAbilityId !== null && obsStudentId !== null && context && (
         <div
           className="fixed inset-0 bg-black/40 flex items-center justify-center z-50"
           onClick={closeObsModal}
         >
           <div
-            className="bg-white rounded-2xl shadow-2xl p-8 min-w-[320px] w-full max-w-xs flex flex-col gap-5 cursor-default"
+            className="bg-white rounded-2xl shadow-2xl p-6 min-w-[220px] w-full max-w-xs flex flex-col gap-4 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-2xl font-bold mb-2 text-blue-700 text-center">
+            <h2 className="text-xl font-bold mb-2 text-yellow-700 text-center">
               Observación para {context.students.find(s => s.id === obsStudentId)?.full_name}
+              {" - "}
+              {context.abilities.find(a => a.id === obsAbilityId)?.display_name}
             </h2>
             <textarea
-              className="block w-full border border-blue-200 rounded-lg px-3 py-2 mb-4 focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
-              rows={4}
+              className="block w-full border border-blue-200 rounded-lg px-2 py-1 mb-3 focus:outline-none focus:ring-2 focus:ring-blue-300 transition"
+              rows={3}
               value={obsInput}
               onChange={e => setObsInput(e.target.value)}
-              placeholder="Escribe aquí la observación del estudiante..."
+              placeholder="Escribe aquí la observación..."
               disabled={saving}
               maxLength={500}
             />
             <div className="flex gap-3 justify-end mt-2">
               <button
-                className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"
+                className="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"
                 type="button"
                 onClick={closeObsModal}
                 disabled={saving}
@@ -272,7 +319,7 @@ export default function EvaluacionPage() {
                 Cancelar
               </button>
               <button
-                className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition disabled:bg-blue-400"
+                className="px-3 py-2 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-bold transition disabled:bg-blue-400"
                 type="button"
                 onClick={handleSaveObs}
                 disabled={saving}
@@ -284,22 +331,21 @@ export default function EvaluacionPage() {
         </div>
       )}
 
-      {/* Título grande centrado: nombre de la sesión */}
+      {/* Título y selectores */}
       {context && context.session?.name && (
-        <h1 className="text-3xl font-extrabold mb-2 text-blue-900 text-center">
+        <h1 className="text-2xl md:text-3xl font-extrabold mb-2 text-indigo-700 text-center">
           {context.session.name}
         </h1>
       )}
-      {/* Debajo, producto en letra pequeña y centrado */}
       {context && context.product?.name && (
-        <div className="text-center text-base text-gray-700 mb-8">
+        <div className="text-center text-sm md:text-base text-gray-700 mb-6">
           Producto: <span className="font-semibold">{context.product.name}</span>
         </div>
       )}
 
       {/* Selector de competencia */}
-      <div className="w-full max-w-2xl mb-4">
-        <label className="font-bold mr-2 text-lg">Selecciona competencia:</label>
+      <div className="w-full max-w-xl mb-4">
+        <label className="font-bold mr-2 text-base md:text-lg">Selecciona competencia:</label>
         <select
           value={selectedCompetencyId ?? ""}
           onChange={e => {
@@ -307,7 +353,7 @@ export default function EvaluacionPage() {
             setSelectedProductId(null);
             setContext(null);
           }}
-          className="cursor-pointer border border-indigo-200 rounded-lg px-3 py-2 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-indigo-300 transition bg-white"
+          className="cursor-pointer border border-indigo-200 rounded-lg px-2 py-2 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-indigo-300 transition bg-white text-sm"
         >
           <option value="">Elige una competencia</option>
           {competencies.map(c => (
@@ -316,15 +362,15 @@ export default function EvaluacionPage() {
         </select>
       </div>
       {/* Selector de producto */}
-      <div className="w-full max-w-2xl mb-6">
-        <label className="font-bold mr-2 text-lg">Selecciona producto:</label>
+      <div className="w-full max-w-xl mb-6">
+        <label className="font-bold mr-2 text-base md:text-lg">Selecciona producto:</label>
         <select
           value={selectedProductId ?? ""}
           onChange={e => {
             setSelectedProductId(Number(e.target.value) || null);
             setContext(null);
           }}
-          className="cursor-pointer border border-indigo-200 rounded-lg px-3 py-2 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-indigo-300 transition bg-white"
+          className="cursor-pointer border border-indigo-200 rounded-lg px-2 py-2 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-indigo-300 transition bg-white text-sm"
         >
           <option value="">Elige un producto</option>
           {products.map(p => (
@@ -333,111 +379,118 @@ export default function EvaluacionPage() {
         </select>
       </div>
 
-      {/* Selector de habilidad */}
+      {/* MATRIZ COMPLETA */}
       {context && (
-        <div className="w-full max-w-2xl mb-6">
-          <label className="font-bold mr-2 text-lg">Selecciona habilidad a evaluar:</label>
-          <select
-            value={selectedAbilityId ?? ""}
-            onChange={e => setSelectedAbilityId(Number(e.target.value))}
-            className="cursor-pointer border border-indigo-200 rounded-lg px-3 py-2 w-full max-w-md focus:outline-none focus:ring-2 focus:ring-indigo-300 transition bg-white"
-          >
-            <option value="">Elige una habilidad</option>
-            {abilities.map(a => (
-              <option key={a.id} value={a.id} className="cursor-pointer">
-                {a.display_name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Renderiza la tabla de evaluación solo si hay contexto y habilidad */}
-      {context && selectedAbilityId && (
-        <div className="overflow-x-auto w-full max-w-4xl">
-          <table className="border w-full rounded-xl shadow bg-white/90">
-            <thead>
-              <tr>
-                <th className="border p-2 align-bottom bg-indigo-100 text-indigo-800 font-semibold" rowSpan={3} style={{ minWidth: 180 }}>
-                  Estudiante
-                </th>
-                <th className="border p-2 text-center bg-indigo-50 text-indigo-900 font-semibold" colSpan={context.criteria.filter(c => c.ability_id === selectedAbilityId).length}>
-                  {context.competency.display_name}
-                </th>
-                <th className="border p-2 align-bottom bg-indigo-100 text-indigo-800 font-semibold" rowSpan={3} style={{ minWidth: 120 }}>
-                  Observaciones
-                </th>
-              </tr>
-              <tr>
-                <th className="border p-2 text-center bg-indigo-50 text-indigo-900" colSpan={context.criteria.filter(c => c.ability_id === selectedAbilityId).length}>
-                  {context.abilities.find(a => a.id === selectedAbilityId)?.display_name}
-                </th>
-              </tr>
-              <tr>
-                {context.criteria
-                  .filter(c => c.ability_id === selectedAbilityId)
-                  .map(cr => (
+        <div className="w-full overflow-x-auto rounded-xl border bg-white/90">
+          <div className="min-w-[650px] md:min-w-full">
+          {(() => {
+            const { abilityGroups, criteriaHeaders } = getCapacityTableHeaders(context.abilities, context.criteria);
+            return (
+              <table className="border-collapse w-full text-[11px] md:text-sm">
+                <thead>
+                  <tr>
                     <th
-                      key={cr.id}
-                      className="border p-2 text-center bg-indigo-50 text-indigo-900"
+                      className="border font-bold bg-gray-200 text-center sticky left-0 z-10"
+                      rowSpan={2}
+                      style={{ minWidth: 80, maxWidth: 160, width: "25%", background: "#f1f5f9" }}
                     >
-                      {cr.display_name}
+                      APELLIDOS Y NOMBRES
                     </th>
-                  ))}
-              </tr>
-            </thead>
-            <tbody>
-              {context.students.map(st => (
-                <tr key={st.id} className="odd:bg-white even:bg-indigo-50">
-                  <td className="border p-2 font-semibold text-indigo-900">{st.full_name}</td>
-                  {context.criteria
-                    .filter(c => c.ability_id === selectedAbilityId)
-                    .map(cr => (
-                      <td key={cr.id} className="border p-2 text-center">
-                        {["AD", "A", "B", "C"].map(level => (
-                          <label key={level} className="mx-1 text-xs font-semibold text-indigo-700">
-                            <input
-                              type="radio"
-                              name={`eval_${st.id}_${cr.id}`}
-                              checked={localValues[st.id]?.[cr.id] === level}
-                              disabled={saving || context.locked}
-                              onChange={() =>
-                                handleLocalChange(st.id, cr.id, level as EvalValue)
-                              }
-                              className="cursor-pointer accent-indigo-600"
-                            />{" "}
-                            {level}
-                          </label>
-                        ))}
-                      </td>
+                    {abilityGroups.map(grp => (
+                      <th
+                        key={grp.id}
+                        className="border font-bold bg-gray-100 text-center"
+                        colSpan={grp.colSpan}
+                      >
+                        {grp.display_name}
+                      </th>
                     ))}
-                  <td className="border p-2 text-center">
-                    <button
-                      className={`px-3 py-1 rounded-lg font-semibold ${localObs[st.id]?.trim() ? "bg-blue-100 text-blue-700 hover:bg-blue-200" : "bg-gray-100 text-gray-700 hover:bg-gray-200"} transition`}
-                      type="button"
-                      disabled={saving || context.locked}
-                      onClick={() => openObsModal(st.id)}
-                    >
-                      {localObs[st.id]?.trim()
-                        ? "Ver / Editar"
-                        : "Agregar"}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="mt-6 flex gap-4 items-center justify-end">
-            <button
-              className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold shadow transition disabled:bg-green-400 focus:outline-none focus:ring-2 focus:ring-green-400"
-              disabled={saving || context.locked}
-              onClick={handleSave}
-            >
-              Guardar evaluación
-            </button>
+                  </tr>
+                  <tr>
+                    {criteriaHeaders.map(h => (
+                      <th
+                        key={`${h.abilityId}_${h.id}`}
+                        className={`border font-bold text-center ${typeof h.id === "string" && h.id.startsWith("obs_") ? "bg-yellow-50" : "bg-gray-50"}`}
+                        style={typeof h.id === "string" && h.id.startsWith("obs_") ? { minWidth: 24, fontWeight: 700 } : { minWidth: 24 }}
+                      >
+                        {h.label}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {context.students.map((st, idx) => (
+                    <tr key={st.id} className="odd:bg-white even:bg-gray-50">
+                      <td
+                        className="border text-black font-medium sticky left-0 z-10 bg-gray-200"
+                        style={{ minWidth: 140, background: "#f1f5f9" }}
+                      >
+                        {st.full_name}
+                      </td>
+                      {context.abilities.map(ability => (
+                        <Fragment key={ability.id}>
+                          {context.criteria
+                            .filter(c => c.ability_id === ability.id)
+                            .map(cr => (
+                              <td key={`v_${st.id}_${ability.id}_${cr.id}`} className="border text-center min-w-[28px] px-0">
+                                <div className="flex flex-col md:flex-row gap-1 md:gap-0 justify-center items-center">
+                                  {["AD", "A", "B", "C"].map(level => (
+                                    <label key={level} className="mx-0.5 text-[10px] md:text-xs font-semibold text-indigo-700 whitespace-nowrap">
+                                      <input
+                                        type="radio"
+                                        name={`eval_${st.id}_${ability.id}_${cr.id}`}
+                                        checked={localValues[st.id]?.[ability.id]?.[cr.id] === level}
+                                        disabled={saving || context.locked}
+                                        onChange={() =>
+                                          handleLocalChange(st.id, ability.id, cr.id, level as EvalValue)
+                                        }
+                                        className="cursor-pointer accent-indigo-600"
+                                      />{" "}
+                                      {level}
+                                    </label>
+                                  ))}
+                                </div>
+                              </td>
+                            ))}
+                          <td
+                            key={`obs_${st.id}_${ability.id}`}
+                            className="border text-center min-w-[30px] px-0"
+                            style={{
+                              background: localObs[st.id]?.[ability.id]?.trim() ? "#FFF9C4" : "#FEFCE8",
+                            }}
+                          >
+                            <button
+                              className={`px-2 py-1 rounded-lg font-semibold ${localObs[st.id]?.[ability.id]?.trim() ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200" : "bg-gray-100 text-gray-700 hover:bg-gray-200"} transition text-xs`}
+                              type="button"
+                              disabled={saving || context.locked}
+                              onClick={() => openObsModal(st.id, ability.id)}
+                            >
+                              {localObs[st.id]?.[ability.id]?.trim()
+                                ? "📝"
+                                : "+"}
+                            </button>
+                          </td>
+                        </Fragment>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            );
+          })()}
           </div>
         </div>
       )}
+
+      <div className="mt-6 flex gap-4 items-center justify-end w-full max-w-xl">
+        <button
+          className="px-5 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-bold shadow transition disabled:bg-green-400 focus:outline-none focus:ring-2 focus:ring-green-400 text-sm"
+          disabled={saving || context?.locked}
+          onClick={handleSaveAll}
+        >
+          Guardar toda la matriz de evaluación
+        </button>
+      </div>
     </main>
   );
 }

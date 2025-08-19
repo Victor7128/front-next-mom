@@ -233,10 +233,10 @@ export default function AbilityPage() {
             className="bg-white rounded-2xl p-8 shadow-2xl min-w-[320px] w-full max-w-xs flex flex-col gap-5 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-2xl font-bold mb-2 text-indigo-700 text-center">Nueva habilidad</h2>
+            <h2 className="text-2xl font-bold mb-2 text-indigo-700 text-center">Nueva Capacidad</h2>
             <form onSubmit={handleCreateAbility} className="flex flex-col gap-3">
               <label>
-                <span className="text-gray-800">Nombre de la habilidad (opcional):</span>
+                <span className="text-gray-800">Nombre de la Capacidad (opcional):</span>
                 <input
                   type="text"
                   className="mt-2 block w-full border border-indigo-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-300 transition"
@@ -244,7 +244,7 @@ export default function AbilityPage() {
                   onChange={e => setNewName(e.target.value)}
                   disabled={creating}
                   maxLength={100}
-                  placeholder="Si se deja vacío, será Habilidad 1, 2..."
+                  placeholder="Si se deja vacío, será Capacidad 1, 2..."
                   autoFocus
                 />
               </label>
@@ -256,7 +256,7 @@ export default function AbilityPage() {
                   onChange={e => setNewDescription(e.target.value)}
                   disabled={creating}
                   maxLength={300}
-                  placeholder="Breve descripción de la habilidad"
+                  placeholder="Breve descripción de la capacidad"
                   rows={2}
                 />
               </label>
@@ -292,10 +292,10 @@ export default function AbilityPage() {
             className="bg-white rounded-2xl p-8 shadow-2xl min-w-[320px] w-full max-w-xs flex flex-col gap-5 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-2xl font-bold mb-2 text-yellow-700 text-center">Editar habilidad</h2>
+            <h2 className="text-2xl font-bold mb-2 text-yellow-700 text-center">Editar Capacidad</h2>
             <form onSubmit={handleEditAbility} className="flex flex-col gap-3">
               <label>
-                <span className="text-gray-800">Nombre de la habilidad (opcional):</span>
+                <span className="text-gray-800">Nombre de la Capacidad (opcional):</span>
                 <input
                   type="text"
                   className="mt-2 block w-full border border-yellow-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-yellow-300 transition"
@@ -303,7 +303,7 @@ export default function AbilityPage() {
                   onChange={e => setEditName(e.target.value)}
                   disabled={editing}
                   maxLength={100}
-                  placeholder="Si se deja vacío, será Habilidad 1, 2..."
+                  placeholder="Si se deja vacío, será capacidad 1, 2..."
                   autoFocus
                 />
               </label>
@@ -315,7 +315,7 @@ export default function AbilityPage() {
                   onChange={e => setEditDescription(e.target.value)}
                   disabled={editing}
                   maxLength={300}
-                  placeholder="Breve descripción de la habilidad"
+                  placeholder="Breve descripción de la capacidad"
                   rows={2}
                 />
               </label>
@@ -351,8 +351,8 @@ export default function AbilityPage() {
             className="bg-white rounded-2xl p-8 shadow-2xl min-w-[320px] w-full max-w-xs flex flex-col gap-5 cursor-default"
             onClick={e => e.stopPropagation()}
           >
-            <h2 className="text-2xl font-bold mb-2 text-red-700 text-center">Eliminar habilidad</h2>
-            <p className="text-center">¿Estás seguro que quieres eliminar esta habilidad?</p>
+            <h2 className="text-2xl font-bold mb-2 text-red-700 text-center">Eliminar Capacidad</h2>
+            <p className="text-center">¿Estás seguro que quieres eliminar esta capacidad?</p>
             <div className="flex gap-3 mt-4 justify-end">
               <button
                 className="px-4 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium transition"

@@ -236,7 +236,7 @@ export default function ConsolidadoPage() {
                             }}
                             title="Promedio de la capacidad"
                           >
-                            PROMED CAP.
+                            PROM.
                           </th>,
                         ]
                       ).flat();
@@ -251,7 +251,7 @@ export default function ConsolidadoPage() {
                             rotate: "180deg",
                           }}
                         >
-                          PROMED
+                          PROMEDIO
                         </th>
                       );
                       return abilityCells;
@@ -411,7 +411,7 @@ export default function ConsolidadoPage() {
                 Observación de {modalObs.student.full_name}
               </h2>
               <p className="text-base text-gray-700 mb-2">
-                <b>Habilidad:</b> {modalObs.ability.display_name}
+                <b>Capacidad:</b> {modalObs.ability.display_name}
               </p>
               <div className="border p-3 rounded bg-gray-50 text-gray-800 whitespace-pre-line text-sm max-h-64 overflow-auto">
                 {modalObs.text}

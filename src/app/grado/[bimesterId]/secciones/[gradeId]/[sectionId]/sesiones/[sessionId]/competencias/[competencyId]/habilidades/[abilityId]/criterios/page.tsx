@@ -14,11 +14,22 @@ type Criterion = {
   description: string | null;
 };
 
+type Ability = {
+  id: number;
+  competency_id: number;
+  number: number;
+  name: string | null;
+  description: string | null;
+};
+
 export default function CriteriosPage() {
   const params = useParams() as Params;
   const { abilityId } = params;
   const [criterios, setCriterios] = useState<Criterion[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Nombre de la capacidad
+  const [abilityName, setAbilityName] = useState<string>("");
 
   // Modal para agregar criterio
   const [modalOpen, setModalOpen] = useState(false);
@@ -58,7 +69,27 @@ export default function CriteriosPage() {
       });
   };
 
+  // Cargar nombre de la capacidad
+  const fetchAbilityName = () => {
+    if (!abilityId) {
+      setAbilityName("");
+      return;
+    }
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/abilities/${abilityId}`)
+      .then(r => r.json())
+      .then((data: Ability) => {
+        // Si no tiene nombre, mostrar Capacidad N
+        setAbilityName(
+          data?.name && data.name.trim() !== ""
+            ? data.name
+            : `Capacidad ${data?.number ?? ""}`
+        );
+      })
+      .catch(() => setAbilityName(""));
+  };
+
   useEffect(fetchCriterios, [abilityId]);
+  useEffect(fetchAbilityName, [abilityId]);
 
   // Genera nombre por defecto (C1, C2, ...)
   function getDefaultName() {
@@ -181,7 +212,7 @@ export default function CriteriosPage() {
       </button>
       <div className="w-full max-w-2xl">
         <h1 className="text-3xl sm:text-4xl font-bold text-green-700 mb-6 text-center sm:text-left">
-          Criterios de la habilidad
+          Criterios de {abilityName ? `(${abilityName})` : ""}
         </h1>
         {loading ? (
           <div className="text-gray-500 text-lg text-center py-8">Cargando criterios...</div>

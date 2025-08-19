@@ -1,6 +1,7 @@
 "use client";
 import { useParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import Papa from "papaparse";
 
 type Section = { id: number; grade_id: number; letter: string; };
 type Grade = { id: number; bimester_id: number; number: number; };
@@ -123,7 +124,7 @@ export default function AlumnosPage() {
     fetchStudents();
   };
 
-  // Importar desde CSV
+  // Importar desde CSV (acepta solo una columna con cualquier contenido, incluso con comas/tildes)
   const handleImportClick = () => {
     setImportModalOpen(true);
     setImportError(null);
@@ -139,37 +140,85 @@ export default function AlumnosPage() {
 
     try {
       const text = await file.text();
-      // Parse CSV: esperamos encabezado full_name (case-insensitive), ignora otros campos
+      // Detectar delimitador y columnas
       const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l.length);
       if (lines.length < 2) throw new Error("El archivo debe tener encabezado y al menos un alumno.");
-      const header = lines[0].split(",").map(h => h.trim().toLowerCase());
-      const nameIdx = header.findIndex(h => h === "full_name" || h === "nombre" || h === "nombre_completo");
-      if (nameIdx === -1) throw new Error("El archivo debe tener una columna llamada 'full_name' (o 'nombre').");
-
-      // Procesar filas
+      // Detectar delimitador
+      let delimiter = ",";
+      if (lines[0].includes(";")) delimiter = ";";
+      const headerColumns = lines[0].split(delimiter).map(h => h.trim().toLowerCase());
+      const nameIdx = headerColumns.findIndex(
+        h => ["full_name", "nombre", "nombre_completo"].includes(h)
+      );
+      // CASO 1: solo una columna (admite comas/tildes sin comillas)
+      if (headerColumns.length === 1) {
+        let imported = 0;
+        let errors: string[] = [];
+        for (let i = 1; i < lines.length; ++i) {
+          const full_name = lines[i].trim();
+          if (!full_name) {
+            errors.push(`Fila ${i + 1}: nombre vacío`);
+            continue;
+          }
+          try {
+            const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}/students`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ full_name }),
+            });
+            if (!res.ok) {
+              const msg = await res.text();
+              errors.push(`Fila ${i + 1}: ${msg || res.statusText}`);
+            } else {
+              imported++;
+            }
+          } catch (err) {
+            errors.push(`Fila ${i + 1}: Error de red`);
+          }
+        }
+        if (errors.length) {
+          setImportError(`Se importaron ${imported} alumnos. Errores:\n` + errors.join("\n"));
+        } else {
+          setImportSuccess(`Se importaron correctamente ${imported} alumnos.`);
+          fetchStudents();
+        }
+        setImporting(false);
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+      // CASO 2: formato CSV estándar, usa papaparse (permite más columnas)
+      const parsed = Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        delimiter,
+        transformHeader: h => h.trim().toLowerCase(),
+      });
+      if (parsed.errors.length) {
+        throw new Error("Error al procesar el archivo CSV: " + parsed.errors.map(e => e.message).join(", "));
+      }
       let imported = 0;
       let errors: string[] = [];
-      for (let i = 1; i < lines.length; ++i) {
-        const cols = lines[i].split(",");
-        const full_name = cols[nameIdx]?.trim();
-        if (!full_name) {
-          errors.push(`Fila ${i + 1}: nombre vacío`);
+      for (let i = 0; i < parsed.data.length; ++i) {
+        const row = parsed.data[i] as any;
+        const full_name = row.full_name || row.nombre || row.nombre_completo;
+        if (!full_name || !full_name.trim()) {
+          errors.push(`Fila ${i + 2}: nombre vacío`);
           continue;
         }
         try {
           const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}/students`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ full_name }),
+            body: JSON.stringify({ full_name: full_name.trim() }),
           });
           if (!res.ok) {
             const msg = await res.text();
-            errors.push(`Fila ${i + 1}: ${msg || res.statusText}`);
+            errors.push(`Fila ${i + 2}: ${msg || res.statusText}`);
           } else {
             imported++;
           }
         } catch (err) {
-          errors.push(`Fila ${i + 1}: Error de red`);
+          errors.push(`Fila ${i + 2}: Error de red`);
         }
       }
       if (errors.length) {
@@ -230,12 +279,12 @@ export default function AlumnosPage() {
                 Crea un archivo <b>CSV</b> con el siguiente formato:
                 <pre className="bg-gray-100 border border-gray-200 rounded my-2 p-2 text-xs">
                   full_name
-                  {"\n"}Juan Pérez
-                  {"\n"}María Gómez
-                  {"\n"}Carlos Rojas
+                  {"\n"}GARCÍA LÓPEZ, ANA MARÍA
+                  {"\n"}DÍAZ PÉREZ, JOSÉ ÁNGEL
+                  {"\n"}RODRÍGUEZ, JULIO
                 </pre>
                 <span className="block text-xs text-gray-500">
-                  También puedes usar "nombre" o "nombre_completo" como encabezado.
+                  También puedes usar "nombre" o "nombre_completo" como encabezado. Si el archivo sólo tiene una columna de nombres, no importa si hay comas o tildes en los nombres, ¡se aceptará!
                 </span>
               </li>
               <li>
