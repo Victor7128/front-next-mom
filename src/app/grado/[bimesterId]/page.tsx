@@ -93,12 +93,30 @@ export default function GradoPage() {
   // Opciones de grado típicos (puedes ajustar)
   const gradoOptions = [1, 2, 3, 4, 5, 6];
 
+  function toRoman(num: number): string {
+    if (num <= 0 || num > 3999) return num.toString(); // Límite básico
+    const romans = [
+      ["M", 1000], ["CM", 900], ["D", 500], ["CD", 400],
+      ["C", 100], ["XC", 90], ["L", 50], ["XL", 40],
+      ["X", 10], ["IX", 9], ["V", 5], ["IV", 4], ["I", 1]
+    ];
+    let res = "";
+    for (const [letter, n] of romans) {
+      const value = n as number;
+      while (num >= value) {
+        res += letter;
+        num -= value;
+      }
+    }
+    return res;
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
       <div className="w-full max-w-2xl">
         <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4">
           <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700 text-center sm:text-left tracking-tight">
-            Grados del Bimestre {bimesterId}
+            {toRoman(Number(bimesterId))} Bimestre
           </h1>
           <button
             className="bg-indigo-600 text-white rounded-full px-6 py-2 text-lg font-semibold shadow hover:bg-indigo-700 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400 active:scale-95"

@@ -176,25 +176,41 @@ export default function SesionesPage() {
     fetchSessions();
   };
 
+  function toRoman(num: number): string {
+    if (isNaN(num) || num <= 0) return "";
+    const romans = [
+      ["M", 1000], ["CM", 900], ["D", 500], ["CD", 400],
+      ["C", 100], ["XC", 90], ["L", 50], ["XL", 40],
+      ["X", 10], ["IX", 9], ["V", 5], ["IV", 4], ["I", 1]
+    ];
+    let res = "";
+    for (const [letter, n] of romans) {
+      const value = Number(n);
+      while (num >= value) {
+        res += letter;
+        num -= value;
+      }
+    }
+    return res;
+  }
+
+  function getHeaderLabel() {
+    const bimRoman = toRoman(Number(bimesterId));
+    const gradoNumero = grade ? grade.number : "";
+    const sectionLetter = section ? section.letter : "";
+    if (bimRoman && gradoNumero && sectionLetter) return `${bimRoman} Bimestre ${gradoNumero}° ${sectionLetter}`;
+    if (bimRoman && gradoNumero) return `${bimRoman} Bimestre ${gradoNumero}°`;
+    if (bimRoman) return `${bimRoman} Bimestre`;
+    return "";
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
       {/* Encabezado con contexto */}
       <div className="w-full max-w-2xl mb-8">
         <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700 mb-3 text-center sm:text-left">
-          Sesiones de la Sección {section ? section.letter : "?"}
+          {getHeaderLabel()}
         </h1>
-        <div className="text-gray-700 text-lg text-center sm:text-left">
-          {grade && (
-            <span className="mr-4">
-              Grado: <b>{grade.number}°</b>
-            </span>
-          )}
-          {bimester && (
-            <span>
-              Bimestre: <b>{bimester.name}</b>
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Botón crear sesión */}

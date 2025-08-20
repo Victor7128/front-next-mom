@@ -14,6 +14,25 @@ const TrashIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
+// Convierte número a romano (I, II, III, IV, etc)
+function toRoman(num: number): string {
+  if (isNaN(num) || num <= 0) return "";
+  const romans = [
+    ["M", 1000], ["CM", 900], ["D", 500], ["CD", 400],
+    ["C", 100], ["XC", 90], ["L", 50], ["XL", 40],
+    ["X", 10], ["IX", 9], ["V", 5], ["IV", 4], ["I", 1]
+  ];
+  let res = "";
+  for (const [letter, n] of romans) {
+    const value = Number(n);
+    while (num >= value) {
+      res += letter;
+      num -= value;
+    }
+  }
+  return res;
+}
+
 export default function SeccionesPage() {
   const params = useParams();
   const router = useRouter();
@@ -63,7 +82,7 @@ export default function SeccionesPage() {
     setAdding(true);
     await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/grades/${gradeId}/sections`, {
       method: "POST",
-      headers: {"Content-Type": "application/json"},
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ letter: selectedLetter })
     });
     setAdding(false);
@@ -94,15 +113,24 @@ export default function SeccionesPage() {
     router.push(`/grado/${bimesterId}/secciones/${gradeId}/${sec.id}`);
   };
 
+  // Muestra el número de grado real (no el id)
+  function getGradeNumber(): string {
+    if (grade && typeof grade.number === "number") return `${grade.number}`;
+    // fallback si no existe info de número
+    return "";
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
       <div className="w-full max-w-2xl">
         <div className="flex flex-col sm:flex-row items-center justify-between mb-8 gap-4 flex-wrap">
           <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700 text-center sm:text-left tracking-tight">
-            Secciones de {getLabel(gradeId) ?? `Grado ${gradeId}`}{" "}
-            <span className="text-indigo-400">
-              ({getLabel(bimesterId) ?? `Bimestre ${bimesterId}`})
-            </span>
+            {toRoman(Number(bimesterId))} Bimestre{" "}
+            {getGradeNumber() && (
+              <>
+                {getGradeNumber()}° Grado
+              </>
+            )}
           </h1>
           <button
             className="bg-indigo-600 text-white rounded-full px-6 py-2 text-lg font-semibold shadow hover:bg-indigo-700 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-indigo-400 active:scale-95"

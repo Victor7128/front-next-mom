@@ -119,7 +119,7 @@ export default function ProductoPage() {
     <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
       <div className="w-full max-w-2xl mb-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700">
-          Productos de la sesión
+          Producto
         </h1>
         <button
           className="bg-green-600 text-white rounded-full px-6 py-2 font-semibold shadow hover:bg-green-700 transition cursor-pointer focus:outline-none focus:ring-2 focus:ring-green-400 active:scale-95"

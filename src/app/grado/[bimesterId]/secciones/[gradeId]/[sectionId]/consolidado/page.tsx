@@ -14,9 +14,20 @@ import type {
   Value
 } from "@/app/util/exportConsolidado";
 
+// Utilidad para mostrar "3° C"
+function getGradeSectionLabel(grade: { number: number } | null, section: { letter: string } | null): string {
+  if (grade && section) return `${grade.number}° ${section.letter}`;
+  if (grade) return `${grade.number}°`;
+  if (section) return section.letter;
+  return "";
+}
+
+type Section = { id: number; grade_id: number; letter: string; };
+type Grade = { id: number; bimester_id: number; number: number; };
+
 export default function ConsolidadoPage() {
-  const params = useParams() as { sectionId: string };
-  const { sectionId } = params;
+  const params = useParams() as { sectionId: string; gradeId?: string };
+  const { sectionId, gradeId } = params;
 
   // Estados base
   const [data, setData] = useState<ConsolidadoResponse | null>(null);
@@ -26,6 +37,28 @@ export default function ConsolidadoPage() {
     ability: Ability;
     text: string;
   } | null>(null);
+
+  // NUEVO: Estados para sección y grado para mostrar encabezado bonito
+  const [section, setSection] = useState<Section | null>(null);
+  const [grade, setGrade] = useState<Grade | null>(null);
+
+  useEffect(() => {
+    if (sectionId)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/sections/${sectionId}`)
+        .then(r => r.json())
+        .then(setSection)
+        .catch(() => setSection(null));
+  }, [sectionId]);
+
+  useEffect(() => {
+    // Si se obtuvo sección, busca su grado real
+    const realGradeId = section ? section.grade_id : gradeId;
+    if (realGradeId)
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/grades/${realGradeId}`)
+        .then(r => r.json())
+        .then(setGrade)
+        .catch(() => setGrade(null));
+  }, [section, gradeId]);
 
   // Carga de datos
   useEffect(() => {
@@ -129,7 +162,7 @@ export default function ConsolidadoPage() {
       <div className="w-full max-w-6xl">
         <div className="flex flex-col sm:flex-row items-center justify-between mb-7 gap-4 flex-wrap">
           <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700 text-center sm:text-left">
-            Consolidado por Sesión
+            Consolidado {getGradeSectionLabel(grade, section)}
           </h1>
           {hasData && data && (
             <ExportButton

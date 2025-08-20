@@ -15,7 +15,6 @@ const cards: CardDef[] = [
     key: "alumnos",
     label: "Alumnos",
     href: (b, g, s) => `/grado/${b}/secciones/${g}/${s}/alumnos`,
-    // Puedes agregar un icono SVG aquí si lo deseas
   },
   {
     key: "sesiones",
@@ -40,6 +39,24 @@ type Grade = {
   bimester_id: number;
   number: number;
 };
+
+function toRoman(num: number): string {
+  if (isNaN(num) || num <= 0) return "";
+  const romans = [
+    ["M", 1000], ["CM", 900], ["D", 500], ["CD", 400],
+    ["C", 100], ["XC", 90], ["L", 50], ["XL", 40],
+    ["X", 10], ["IX", 9], ["V", 5], ["IV", 4], ["I", 1]
+  ];
+  let res = "";
+  for (const [letter, n] of romans) {
+    const value = Number(n);
+    while (num >= value) {
+      res += letter;
+      num -= value;
+    }
+  }
+  return res;
+}
 
 export default function SeccionMenuPage() {
   const params = useParams();
@@ -69,12 +86,24 @@ export default function SeccionMenuPage() {
     }
   }, [gradeId]);
 
+  // Para mostrar el título: III Bimestre 3° C
+  function getHeaderTitle() {
+    const bimRoman = toRoman(Number(bimesterId));
+    const gradoNumero = grade ? grade.number : "";
+    const letter = section ? section.letter : "";
+    if (bimRoman && gradoNumero && letter) return `${bimRoman} Bimestre ${gradoNumero}° ${letter}`;
+    if (bimRoman && gradoNumero) return `${bimRoman} Bimestre ${gradoNumero}°`;
+    if (bimRoman) return `${bimRoman} Bimestre`;
+    return "Sección";
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-12">
       <div className="w-full max-w-xl mb-10">
         <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700 mb-3 text-center sm:text-left">
-          Opciones de la Sección {section ? section.letter : "?"}
+          {getHeaderTitle()}
         </h1>
+        {/* Si quieres una línea secundaria con info detallada, puedes dejar esto:
         <div className="text-gray-700 text-lg text-center sm:text-left">
           {grade && (
             <span className="mr-4">
@@ -83,10 +112,11 @@ export default function SeccionMenuPage() {
           )}
           {bimesterId && (
             <span>
-              Bimestre: <b>{bimesterId}</b>
+              Bimestre: <b>{toRoman(Number(bimesterId))}</b>
             </span>
           )}
         </div>
+        */}
       </div>
       <ul className="grid grid-cols-1 sm:grid-cols-3 gap-7 w-full max-w-2xl">
         {cards.map(card => (

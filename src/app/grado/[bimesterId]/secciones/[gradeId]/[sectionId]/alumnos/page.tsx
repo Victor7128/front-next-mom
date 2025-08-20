@@ -235,25 +235,20 @@ export default function AlumnosPage() {
     }
   };
 
+  function getGradeSectionLabel(grade: Grade | null, section: Section | null): string {
+    if (grade && section) return `${grade.number}° ${section.letter}`;
+    if (grade) return `${grade.number}°`;
+    if (section) return section.letter;
+    return "";
+  }
+
   return (
     <main className="min-h-screen flex flex-col items-center bg-gradient-to-br from-indigo-50 to-blue-100 px-4 py-10">
       {/* Encabezado con contexto */}
       <div className="w-full max-w-2xl mb-8">
         <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700 mb-3 text-center sm:text-left">
-          Alumnos de la Sección {section ? section.letter : "?"}
+          Alumnos {getGradeSectionLabel(grade, section)}
         </h1>
-        <div className="text-gray-700 text-lg text-center sm:text-left">
-          {grade && (
-            <span className="mr-4">
-              Grado: <b>{grade.number}°</b>
-            </span>
-          )}
-          {bimester && (
-            <span>
-              Bimestre: <b>{bimester.name}</b>
-            </span>
-          )}
-        </div>
       </div>
 
       {/* Botón importar */}

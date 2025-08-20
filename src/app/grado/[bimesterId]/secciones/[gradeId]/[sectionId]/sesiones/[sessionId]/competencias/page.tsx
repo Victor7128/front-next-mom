@@ -143,7 +143,7 @@ export default function CompetenciasPage() {
 
       <div className="w-full max-w-2xl">
         <h1 className="text-3xl sm:text-4xl font-bold text-indigo-700 mb-6 text-center sm:text-left">
-          Competencias de la sesión
+          Competencia
         </h1>
         {loading ? (
           <div className="text-gray-500 text-lg text-center py-8">Cargando competencias...</div>
