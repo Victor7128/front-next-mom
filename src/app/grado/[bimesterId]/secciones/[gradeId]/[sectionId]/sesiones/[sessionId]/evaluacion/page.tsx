@@ -200,7 +200,7 @@ export default function EvaluacionPage() {
           if (
             currentValue !== "" &&
             (currentValue !== (originalValue?.value ?? "") ||
-            currentObs !== originalObs)
+              currentObs !== originalObs)
           ) {
             updatePromises.push(
               fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/evaluation/value`, {
@@ -401,132 +401,128 @@ export default function EvaluacionPage() {
       </div>
 
       {/* MATRIZ COMPLETA */}
-      {context && (
-        <div className="w-full overflow-x-auto rounded-xl border bg-white/90">
-          <div className="min-w-[650px] md:min-w-full">
-            {(() => {
-              const { abilityGroups, criteriaHeaders } = getCapacityTableHeaders(context.abilities, context.criteria);
-              return (
-                <table className="border-collapse w-full text-[11px] md:text-sm">
-                  <thead>
-                    <tr>
-                      <th
-                        className="border font-bold bg-gray-200 text-center sticky left-0 top-0 z-30"
-                        rowSpan={2}
-                        style={{
-                          minWidth: 80,
-                          maxWidth: 160,
-                          width: "25%",
-                          background: "#f1f5f9",
-                          zIndex: 30,
-                          top: 0,
-                        }}
-                      >
-                        APELLIDOS Y NOMBRES
-                      </th>
-                      {abilityGroups.map(grp => (
-                        <th
-                          key={grp.id}
-                          className="border font-bold bg-gray-100 text-center sticky top-0 z-20"
-                          colSpan={grp.colSpan}
-                          style={{
-                            background: "#f3f4f6",
-                            zIndex: 20,
-                            top: 0,
-                          }}
-                        >
-                          {grp.display_name}
-                        </th>
-                      ))}
-                    </tr>
-                    <tr>
-                      {criteriaHeaders.map(h => (
-                        <th
-                          key={`${h.abilityId}_${h.id}`}
-                          className={`border font-bold text-center sticky z-20 ${typeof h.id === "string" && h.id.startsWith("obs_") ? "bg-yellow-50" : "bg-gray-50"}`}
-                          style={{
-                            minWidth: 24,
-                            fontWeight: typeof h.id === "string" && h.id.startsWith("obs_") ? 700 : undefined,
-                            top: HEADER1_HEIGHT,
-                            zIndex: 20,
-                          }}
-                        >
-                          {h.label}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {context.students.map((st, idx) => (
-                      <tr key={st.id} className="odd:bg-white even:bg-gray-50">
+      {context && (() => {
+        const { abilityGroups, criteriaHeaders } = getCapacityTableHeaders(context.abilities, context.criteria);
+        return (
+          <div className="w-full max-w-full rounded-xl border bg-white/90" style={{ overflow: 'auto', maxHeight: '65vh' }}>
+            <table className="border-collapse w-full text-[11px] md:text-sm min-w-[650px]">
+              <thead>
+                <tr>
+                  {/* Sticky columna nombres en header, esquina superior izquierda */}
+                  <th
+                    className="border font-bold bg-gray-200 text-center sticky left-0 top-0 z-[30]"
+                    rowSpan={2}
+                    style={{
+                      minWidth: 120,
+                      background: "#f1f5f9",
+                      left: 0,
+                      top: 0,
+                      zIndex: 30,
+                    }}
+                  >
+                    APELLIDOS Y NOMBRES
+                  </th>
+                  {abilityGroups.map(grp => (
+                    <th
+                      key={grp.id}
+                      className="border font-bold bg-gray-100 text-center sticky top-0 z-[20]"
+                      colSpan={grp.colSpan}
+                      style={{
+                        background: "#f3f4f6",
+                        top: 0,
+                        zIndex: 20,
+                      }}
+                    >
+                      {grp.display_name}
+                    </th>
+                  ))}
+                </tr>
+                <tr>
+                  {criteriaHeaders.map(h => (
+                    <th
+                      key={`${h.abilityId}_${h.id}`}
+                      className={`border font-bold text-center sticky top-[${HEADER1_HEIGHT}px] z-[20] ${typeof h.id === "string" && h.id.startsWith("obs_") ? "bg-yellow-50" : "bg-gray-50"}`}
+                      style={{
+                        minWidth: 24,
+                        top: HEADER1_HEIGHT,
+                        zIndex: 20,
+                      }}
+                    >
+                      {h.label}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {context.students.map((st, idx) => (
+                  <tr key={st.id} className="odd:bg-white even:bg-gray-50">
+                    {/* Sticky solo left en body */}
+                    <td
+                      className="border text-black font-medium sticky left-0 z-[10] bg-gray-200"
+                      style={{
+                        minWidth: 120,
+                        background: "#f1f5f9",
+                        left: 0,
+                        zIndex: 10,
+                      }}
+                    >
+                      {st.full_name}
+                    </td>
+                    {context.abilities.map(ability => (
+                      <Fragment key={ability.id}>
+                        {context.criteria
+                          .filter(c => c.ability_id === ability.id)
+                          .map(cr => {
+                            const currentValue = localValues[st.id]?.[ability.id]?.[cr.id] || "";
+                            return (
+                              <td key={`v_${st.id}_${ability.id}_${cr.id}`} className="border text-center min-w-[28px] px-0">
+                                <div className="flex flex-row gap-1 justify-center items-center">
+                                  {["AD", "A", "B", "C"].map(level => (
+                                    <label key={level} className="mx-0.5 text-[10px] md:text-xs font-semibold text-indigo-700 whitespace-nowrap">
+                                      <input
+                                        type="radio"
+                                        name={`eval_${st.id}_${ability.id}_${cr.id}`}
+                                        checked={currentValue === level}
+                                        disabled={saving || context.locked}
+                                        onChange={() =>
+                                          handleLocalChange(st.id, ability.id, cr.id, level as EvalValue)
+                                        }
+                                        className="cursor-pointer accent-indigo-600"
+                                      />{" "}
+                                      {level}
+                                    </label>
+                                  ))}
+                                </div>
+                              </td>
+                            );
+                          })}
                         <td
-                          className="border text-black font-medium sticky left-0 z-10 bg-gray-200"
+                          key={`obs_${st.id}_${ability.id}`}
+                          className="border text-center min-w-[30px] px-0"
                           style={{
-                            minWidth: 140,
-                            background: "#f1f5f9",
-                            zIndex: 10,
-                            left: 0,
+                            background: localObs[st.id]?.[ability.id]?.trim() ? "#FFF9C4" : "#FEFCE8",
                           }}
                         >
-                          {st.full_name}
+                          <button
+                            className={`px-2 py-1 rounded-lg font-semibold ${localObs[st.id]?.[ability.id]?.trim() ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200" : "bg-gray-100 text-gray-700 hover:bg-gray-200"} transition text-xs`}
+                            type="button"
+                            disabled={saving || context.locked}
+                            onClick={() => openObsModal(st.id, ability.id)}
+                          >
+                            {localObs[st.id]?.[ability.id]?.trim()
+                              ? "📝"
+                              : "+"}
+                          </button>
                         </td>
-                        {context.abilities.map(ability => (
-                          <Fragment key={ability.id}>
-                            {context.criteria
-                              .filter(c => c.ability_id === ability.id)
-                              .map(cr => {
-                                const currentValue = localValues[st.id]?.[ability.id]?.[cr.id] || "";
-                                return (
-                                  <td key={`v_${st.id}_${ability.id}_${cr.id}`} className="border text-center min-w-[28px] px-0">
-                                    <div className="flex flex-row gap-1 justify-center items-center">
-                                      {["AD", "A", "B", "C"].map(level => (
-                                        <label key={level} className="mx-0.5 text-[10px] md:text-xs font-semibold text-indigo-700 whitespace-nowrap">
-                                          <input
-                                            type="radio"
-                                            name={`eval_${st.id}_${ability.id}_${cr.id}`}
-                                            checked={currentValue === level}
-                                            disabled={saving || context.locked}
-                                            onChange={() =>
-                                              handleLocalChange(st.id, ability.id, cr.id, level as EvalValue)
-                                            }
-                                            className="cursor-pointer accent-indigo-600"
-                                          />{" "}
-                                          {level}
-                                        </label>
-                                      ))}
-                                    </div>
-                                  </td>
-                                );
-                              })}
-                            <td
-                              key={`obs_${st.id}_${ability.id}`}
-                              className="border text-center min-w-[30px] px-0"
-                              style={{
-                                background: localObs[st.id]?.[ability.id]?.trim() ? "#FFF9C4" : "#FEFCE8",
-                              }}
-                            >
-                              <button
-                                className={`px-2 py-1 rounded-lg font-semibold ${localObs[st.id]?.[ability.id]?.trim() ? "bg-yellow-100 text-yellow-800 hover:bg-yellow-200" : "bg-gray-100 text-gray-700 hover:bg-gray-200"} transition text-xs`}
-                                type="button"
-                                disabled={saving || context.locked}
-                                onClick={() => openObsModal(st.id, ability.id)}
-                              >
-                                {localObs[st.id]?.[ability.id]?.trim()
-                                  ? "📝"
-                                  : "+"}
-                              </button>
-                            </td>
-                          </Fragment>
-                        ))}
-                      </tr>
+                      </Fragment>
                     ))}
-                  </tbody>
-                </table>
-              );
-            })()}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <div className="mt-6 flex gap-4 items-center justify-end w-full max-w-xl">
         <button
